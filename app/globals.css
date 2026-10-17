@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --canvas: #DDE1E4;
+  --surface: #F2F4F5;
+  --surface-2: #E8EBED;
+  --ink: #1E252B;
+  --ink-muted: #5B6670;
+  --line: #BCC3C9;
+  --critical: #C4161C;
+  --high: #D9711C;
+  --medium: #B89600;
+  --ok: #2F7A4E;
+  --agent: #3A5DAE;
+}
+
+[data-theme="dark"] {
+  --canvas: #1B2126;
+  --surface: #232A30;
+  --surface-2: #2C343B;
+  --ink: #E3E7EA;
+  --ink-muted: #9AA5AE;
+  --line: #3A444C;
+  --critical: #E5484D;
+  --high: #F0883E;
+  --medium: #D9B310;
+  --ok: #4CAF78;
+  --agent: #7C9BE8;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --canvas: #1B2126;
+    --surface: #232A30;
+    --surface-2: #2C343B;
+    --ink: #E3E7EA;
+    --ink-muted: #9AA5AE;
+    --line: #3A444C;
+    --critical: #E5484D;
+    --high: #F0883E;
+    --medium: #D9B310;
+    --ok: #4CAF78;
+    --agent: #7C9BE8;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-ibm-plex-sans), system-ui, -apple-system, sans-serif;
+  font-feature-settings: "tnum" 1;
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* AI suggestion left border utility */
+.agent-accent {
+  border-left: 2px solid var(--agent);
+}
+
+/* Pulse animation for abnormal tiles when alerts trigger */
+@keyframes pulse-once {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.04); box-shadow: 0 0 10px var(--critical); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-pulse-abnormal {
+  animation: pulse-once 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-abnormal {
+    animation: none;
+  }
+}
