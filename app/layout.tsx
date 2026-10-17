@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { IBM_Plex_Sans, IBM_Plex_Sans_Condensed } from 'next/font/google';
+import { IBM_Plex_Sans } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { PlantProvider } from '@/components/PlantContext';
@@ -16,16 +16,9 @@ const ibmPlexSans = IBM_Plex_Sans({
   display: 'swap',
 });
 
-const ibmPlexSansCondensed = IBM_Plex_Sans_Condensed({
-  subsets: ['latin'],
-  weight: ['400', '600', '700'],
-  variable: '--font-ibm-plex-sans-condensed',
-  display: 'swap',
-});
-
 export const metadata: Metadata = {
   title: 'Ferrow Foresight | Maintenance Operating System',
-  description: 'AI-assisted condition-based and risk-based maintenance operating system',
+  description: 'Condition-based and risk-based maintenance operating system for packaging and processing',
 };
 
 export default function RootLayout({
@@ -39,10 +32,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${ibmPlexSans.variable} ${ibmPlexSansCondensed.variable}`}
+      className={ibmPlexSans.variable}
       suppressHydrationWarning
     >
-      <body className="bg-canvas text-ink antialiased">
+      <body className="bg-canvas text-ink antialiased selection:bg-ink/10 selection:text-ink">
         <ThemeProvider>
           <Suspense fallback={null}>
             <PlantProvider>

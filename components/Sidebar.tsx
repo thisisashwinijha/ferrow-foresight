@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -15,6 +15,8 @@ import {
   Users,
   Bot,
   Info,
+  ChevronRight,
+  ChevronLeft,
   X,
 } from 'lucide-react';
 import { usePlantContext } from './PlantContext';
@@ -39,8 +41,8 @@ const NAV_GROUPS: NavGroup[] = [
   {
     group: 'Operate',
     items: [
+      { name: 'Control room', href: '/', icon: SlidersHorizontal },
       { name: 'Network', href: '/network', icon: Globe },
-      { name: 'Control Room', href: '/', icon: SlidersHorizontal },
       { name: 'Work orders', href: '/work-orders', icon: ClipboardList },
       { name: 'Capture', href: '/capture', icon: Smartphone },
     ],
@@ -70,60 +72,74 @@ const NAV_GROUPS: NavGroup[] = [
 export function Sidebar({ isOpenMobile, onCloseMobile }: SidebarProps) {
   const pathname = usePathname();
   const { plantId, lineId } = usePlantContext();
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const queryParams = new URLSearchParams();
   if (plantId && plantId !== 'all') queryParams.set('plant', plantId);
   if (lineId && lineId !== 'all') queryParams.set('line', lineId);
   const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
 
-  const renderNavGroup = (group: NavGroup, isMobile = false) => (
-    <div key={group.group} className="mb-4">
-      <div className={`px-3 mb-1 text-[10px] uppercase font-bold text-ink-muted tracking-wider ${isMobile ? '' : 'hidden lg:block'}`}>
-        {group.group}
-      </div>
-      <div className="space-y-0.5">
-        {group.items.map((item) => {
-          const isActive = pathname === item.href;
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={`${item.href}${queryString}`}
-              onClick={() => {
-                if (isMobile && onCloseMobile) onCloseMobile();
-              }}
-              title={item.name}
-              className={`flex items-center gap-2.5 px-3 py-2 text-xs rounded-btn transition-colors ${
-                isActive
-                  ? 'bg-surface font-semibold text-ink border-l-2 border-ink shadow-sm'
-                  : 'text-ink-muted hover:text-ink hover:bg-surface/50'
-              } ${isMobile ? '' : 'justify-center lg:justify-start'}`}
-            >
-              <Icon className="w-4 h-4 shrink-0" />
-              <span className={`truncate ${isMobile ? 'inline' : 'hidden lg:inline'}`}>
-                {item.name}
-              </span>
-            </Link>
-          );
-        })}
-      </div>
-    </div>
-  );
-
   return (
     <>
-      {/* Desktop & Tablet Sidebar */}
-      <aside className="hidden md:flex flex-col border-r border-line bg-surface-2 shrink-0 transition-all duration-200 md:w-14 lg:w-52 select-none h-[calc(100vh-3.5rem)] sticky top-14 overflow-y-auto p-2">
-        {/* Brand / Logo */}
-        <div className="hidden lg:flex items-center gap-2 px-3 py-2 mb-3 border-b border-line/60">
-          <div className="w-2.5 h-2.5 rounded-sm bg-ink" />
-          <span className="font-semibold text-sm tracking-tight text-ink">
-            FERROW <span className="font-normal text-ink-muted">FORESIGHT</span>
-          </span>
+      {/* Desktop Slim Icon Rail (64px) expandable on toggle */}
+      <aside
+        className={`hidden md:flex flex-col bg-surface-2/40 shrink-0 transition-all duration-200 select-none h-[calc(100vh-3.5rem)] sticky top-14 py-4 px-2.5 z-20 ${
+          isExpanded ? 'w-56 shadow-xl' : 'w-16 items-center'
+        }`}
+      >
+        {/* Toggle Expand / Collapse */}
+        <div className={`mb-4 flex items-center ${isExpanded ? 'justify-between px-2' : 'justify-center'}`}>
+          {isExpanded && (
+            <span className="text-xs font-semibold text-ink tracking-tight">Navigation</span>
+          )}
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            title={isExpanded ? 'Collapse rail' : 'Expand navigation'}
+            className="p-1.5 rounded-btn hover:bg-surface text-ink-muted hover:text-ink transition-colors"
+          >
+            {isExpanded ? <ChevronLeft className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+          </button>
         </div>
 
-        <nav className="flex-1 space-y-1">
-          {NAV_GROUPS.map((g) => renderNavGroup(g, false))}
+        {/* Nav Items */}
+        <nav className="flex-1 space-y-4 w-full">
+          {NAV_GROUPS.map((group) => (
+            <div key={group.group} className="space-y-1">
+              {isExpanded && (
+                <div className="px-2 mb-1 text-[11px] font-medium text-ink-muted">
+                  {group.group}
+                </div>
+              )}
+              {group.items.map((item) => {
+                const isActive = pathname === item.href;
+                const Icon = item.icon;
+                return (
+                  <div key={item.href} className="relative group/tooltip">
+                    <Link
+                      href={`${item.href}${queryString}`}
+                      className={`flex items-center gap-3 px-2.5 py-2 text-xs rounded-btn transition-colors relative ${
+                        isActive
+                          ? 'bg-surface text-ink font-semibold shadow-xs'
+                          : 'text-ink-muted hover:text-ink hover:bg-surface/50'
+                      } ${isExpanded ? 'justify-start' : 'justify-center'}`}
+                    >
+                      <Icon className="w-4 h-4 shrink-0" />
+                      {isExpanded && (
+                        <span className="truncate">{item.name}</span>
+                      )}
+                    </Link>
+
+                    {/* Tooltip in collapsed state */}
+                    {!isExpanded && (
+                      <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 px-2 py-1 rounded bg-surface border border-line shadow-md text-xs font-medium text-ink whitespace-nowrap opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity z-50">
+                        {item.name}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
         </nav>
       </aside>
 
@@ -131,26 +147,46 @@ export function Sidebar({ isOpenMobile, onCloseMobile }: SidebarProps) {
       {isOpenMobile && (
         <div className="fixed inset-0 z-50 md:hidden flex">
           <div
-            className="fixed inset-0 bg-ink/50 backdrop-blur-xs"
+            className="fixed inset-0 bg-ink/40 backdrop-blur-xs transition-opacity"
             onClick={onCloseMobile}
           />
-          <div className="relative w-64 bg-surface-2 h-full z-10 flex flex-col p-3 shadow-2xl border-r border-line">
-            <div className="flex items-center justify-between pb-3 mb-2 border-b border-line">
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-sm bg-ink" />
-                <span className="font-semibold text-xs tracking-tight text-ink">
-                  FERROW <span className="font-normal text-ink-muted">FORESIGHT</span>
-                </span>
-              </div>
+          <div className="relative w-64 bg-surface h-full z-10 flex flex-col p-4 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 mb-3 border-b border-line/40">
+              <span className="font-semibold text-sm text-ink">Menu</span>
               <button
                 onClick={onCloseMobile}
-                className="p-1 rounded-btn hover:bg-surface text-ink-muted hover:text-ink"
+                className="p-1 rounded-btn hover:bg-surface-2 text-ink-muted hover:text-ink"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <nav className="flex-1 overflow-y-auto">
-              {NAV_GROUPS.map((g) => renderNavGroup(g, true))}
+            <nav className="flex-1 overflow-y-auto space-y-4">
+              {NAV_GROUPS.map((group) => (
+                <div key={group.group} className="space-y-1">
+                  <div className="px-2 text-[11px] font-medium text-ink-muted">
+                    {group.group}
+                  </div>
+                  {group.items.map((item) => {
+                    const isActive = pathname === item.href;
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={`${item.href}${queryString}`}
+                        onClick={onCloseMobile}
+                        className={`flex items-center gap-3 px-3 py-2 text-xs rounded-btn transition-colors ${
+                          isActive
+                            ? 'bg-surface-2 text-ink font-semibold'
+                            : 'text-ink-muted hover:text-ink'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 shrink-0" />
+                        <span>{item.name}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              ))}
             </nav>
           </div>
         </div>

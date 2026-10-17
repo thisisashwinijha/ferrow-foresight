@@ -9,7 +9,6 @@ import {
   Search,
   ChevronDown,
   Menu,
-  ShieldCheck,
   Building2,
   UserCheck,
 } from 'lucide-react';
@@ -64,50 +63,47 @@ export function TopBar({ plants, machines, onToggleSidebar }: TopBarProps) {
     }
   };
 
-  // Onboarded plants first
   const onboarded = plants.filter((p) => p.status !== 'not_onboarded');
   const notOnboarded = plants.filter((p) => p.status === 'not_onboarded');
 
   return (
     <>
-      <header className="h-14 border-b border-line bg-surface px-3 md:px-4 flex items-center justify-between gap-2 z-30 sticky top-0">
-        {/* Left Section: Mobile toggle, Plant selector, Live clock */}
+      <header className="h-14 border-b border-line/30 bg-surface/70 backdrop-blur-md px-4 lg:px-6 flex items-center justify-between gap-4 z-30 sticky top-0">
+        {/* Left: Mobile hamburger + Plant Selector */}
         <div className="flex items-center gap-3">
           {onToggleSidebar && (
             <button
               onClick={onToggleSidebar}
-              className="md:hidden p-1.5 rounded-btn hover:bg-surface-2 text-ink border border-line"
+              className="md:hidden p-1.5 rounded-btn hover:bg-surface-2 text-ink"
               aria-label="Toggle navigation menu"
             >
               <Menu className="w-4 h-4" />
             </button>
           )}
 
-          {/* Plant Selector */}
+          {/* Plant Switcher */}
           <div className="relative">
             <button
               onClick={() => setIsPlantDropdownOpen(!isPlantDropdownOpen)}
-              className="flex items-center gap-2 px-2.5 py-1.5 rounded-btn bg-surface-2 hover:bg-line/30 border border-line text-xs font-medium text-ink transition-colors"
+              className="flex items-center gap-2 px-2.5 py-1.5 rounded-btn hover:bg-surface-2 text-xs font-medium text-ink transition-colors"
             >
               <Building2 className="w-3.5 h-3.5 text-ink-muted" />
-              <div className="flex items-center gap-1.5">
-                <span className="font-semibold">{selectedPlant?.id || plantId}</span>
-                <span className="hidden sm:inline text-ink-muted">·</span>
-                <span className="hidden sm:inline truncate max-w-[140px]">
-                  {selectedPlant?.name.replace('Ferrow ', '') || 'Network'}
+              <span className="font-semibold">{selectedPlant?.id || plantId}</span>
+              <span className="text-ink-muted">·</span>
+              <span className="truncate max-w-[130px]">
+                {selectedPlant?.city || 'Network'}
+              </span>
+              {selectedPlant?.status === 'pilot' && (
+                <span className="px-1.5 py-0.5 bg-ok/10 text-ok text-[11px] font-medium rounded-chip">
+                  Pilot
                 </span>
-                {selectedPlant?.status === 'pilot' && (
-                  <span className="px-1.5 py-0.2 bg-ok/20 text-ok text-[10px] font-mono font-bold rounded">
-                    Pilot
-                  </span>
-                )}
-                {selectedPlant?.status === 'shadow' && (
-                  <span className="px-1.5 py-0.2 bg-ink/10 text-ink-muted text-[10px] font-mono font-bold rounded">
-                    Shadow
-                  </span>
-                )}
-              </div>
-              <ChevronDown className="w-3 h-3 text-ink-muted ml-0.5" />
+              )}
+              {selectedPlant?.status === 'shadow' && (
+                <span className="px-1.5 py-0.5 bg-ink/10 text-ink-muted text-[11px] font-medium rounded-chip">
+                  Shadow
+                </span>
+              )}
+              <ChevronDown className="w-3 h-3 text-ink-muted ml-0.5 opacity-60" />
             </button>
 
             {isPlantDropdownOpen && (
@@ -116,91 +112,94 @@ export function TopBar({ plants, machines, onToggleSidebar }: TopBarProps) {
                   className="fixed inset-0 z-40"
                   onClick={() => setIsPlantDropdownOpen(false)}
                 />
-                <div className="absolute left-0 mt-1 w-64 bg-surface border border-line rounded-panel shadow-xl z-50 max-h-96 overflow-y-auto divide-y divide-line/40 py-1">
-                  <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-ink-muted tracking-wider">
-                    Onboarded Plants
+                <div className="absolute left-0 mt-1.5 w-64 bg-surface border border-line/40 rounded-card shadow-2xl z-50 max-h-96 overflow-y-auto p-1.5">
+                  <div className="px-2.5 py-1 text-[11px] font-medium text-ink-muted">
+                    Onboarded plants
                   </div>
                   <button
                     onClick={() => handleSelectPlant('all', 'all')}
-                    className="w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-surface-2"
+                    className="w-full text-left px-2.5 py-1.5 text-xs flex items-center justify-between rounded-btn hover:bg-surface-2"
                   >
                     <span className="font-medium text-ink">All plants (Network)</span>
-                    <span className="text-[10px] font-mono text-ink-muted">40 plants</span>
+                    <span className="text-[11px] text-ink-muted">40 plants</span>
                   </button>
                   {onboarded.map((p) => (
                     <button
                       key={p.id}
                       onClick={() => handleSelectPlant(p.id, p.status)}
-                      className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-surface-2 ${
+                      className={`w-full text-left px-2.5 py-1.5 text-xs flex items-center justify-between rounded-btn hover:bg-surface-2 ${
                         p.id === plantId ? 'bg-surface-2 font-semibold' : ''
                       }`}
                     >
-                      <div>
+                      <div className="flex items-center gap-1.5">
                         <span className="font-mono">{p.id}</span>
-                        <span className="mx-1 text-ink-muted">·</span>
+                        <span className="text-ink-muted">·</span>
                         <span>{p.city}</span>
                       </div>
                       <span
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-mono uppercase font-bold ${
+                        className={`px-1.5 py-0.2 rounded-chip text-[11px] font-medium ${
                           p.status === 'pilot'
-                            ? 'bg-ok/20 text-ok'
+                            ? 'bg-ok/10 text-ok'
                             : 'bg-ink/10 text-ink-muted'
                         }`}
                       >
-                        {p.status}
+                        {p.status === 'pilot' ? 'Pilot' : 'Shadow'}
                       </span>
                     </button>
                   ))}
 
-                  <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-ink-muted tracking-wider bg-surface-2/40">
-                    Not Onboarded ({notOnboarded.length} plants)
+                  <div className="px-2.5 py-1 mt-2 text-[11px] font-medium text-ink-muted">
+                    Not onboarded ({notOnboarded.length} plants)
                   </div>
                   {notOnboarded.map((p) => (
                     <div
                       key={p.id}
-                      className="px-3 py-1.5 text-xs flex items-center justify-between text-ink-muted/50 cursor-not-allowed select-none"
+                      className="px-2.5 py-1 text-xs flex items-center justify-between text-ink-muted/40 cursor-not-allowed select-none"
                     >
                       <span>
                         {p.id} · {p.city}
                       </span>
-                      <span className="text-[10px] font-mono">Not onboarded</span>
+                      <span className="text-[10px]">Not onboarded</span>
                     </div>
                   ))}
                 </div>
               </>
             )}
           </div>
-
-          {/* Live Clock with selected plant's timezone */}
-          <div className="hidden lg:flex items-center pl-2 border-l border-line">
-            <LiveClock timeZone={activeTz} />
-          </div>
         </div>
 
-        {/* Center / Right Section */}
-        <div className="flex items-center gap-2">
-          {/* Machine Search (Cmd+K) */}
+        {/* Center: Command Search (Cmd+K) Linear-style */}
+        <div className="hidden sm:flex flex-1 max-w-sm justify-center">
           <button
             onClick={() => setIsSearchOpen(true)}
-            className="flex items-center gap-2 px-2.5 py-1.5 rounded-btn bg-surface-2 hover:bg-line/40 border border-line text-xs text-ink-muted transition-colors"
+            className="flex items-center justify-between w-full px-3 py-1.5 rounded-btn bg-surface-2/50 hover:bg-surface-2 text-xs text-ink-muted transition-colors border border-transparent hover:border-line/30"
           >
-            <Search className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Search machines</span>
-            <kbd className="hidden sm:inline px-1 bg-surface border border-line rounded text-[10px] font-mono">
+            <div className="flex items-center gap-2">
+              <Search className="w-3.5 h-3.5 opacity-60" />
+              <span>Search machines or alerts...</span>
+            </div>
+            <kbd className="px-1.5 py-0.5 bg-surface text-ink-muted border border-line/40 rounded text-[10px] font-mono shadow-xs">
               ⌘K
             </kbd>
           </button>
+        </div>
+
+        {/* Right: Live Clock, Role, Demo badge, Theme toggle */}
+        <div className="flex items-center gap-2">
+          {/* Live Clock with Local Plant Time */}
+          <div className="hidden lg:flex items-center mr-2">
+            <LiveClock timeZone={activeTz} />
+          </div>
 
           {/* Role Switcher */}
           <div className="relative">
             <button
               onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-btn bg-surface-2 hover:bg-line/30 border border-line text-xs font-medium text-ink transition-colors"
+              className="flex items-center gap-1.5 px-2 py-1 rounded-btn hover:bg-surface-2 text-xs text-ink-muted hover:text-ink transition-colors"
             >
-              <UserCheck className="w-3.5 h-3.5 text-ink-muted" />
-              <span className="hidden xl:inline truncate max-w-[130px]">{role}</span>
-              <span className="xl:hidden truncate max-w-[90px]">Role</span>
-              <ChevronDown className="w-3 h-3 text-ink-muted" />
+              <UserCheck className="w-3.5 h-3.5 opacity-70" />
+              <span className="hidden xl:inline truncate max-w-[120px]">{role}</span>
+              <ChevronDown className="w-3 h-3 opacity-60" />
             </button>
 
             {isRoleDropdownOpen && (
@@ -209,9 +208,9 @@ export function TopBar({ plants, machines, onToggleSidebar }: TopBarProps) {
                   className="fixed inset-0 z-40"
                   onClick={() => setIsRoleDropdownOpen(false)}
                 />
-                <div className="absolute right-0 mt-1 w-56 bg-surface border border-line rounded-panel shadow-xl z-50 divide-y divide-line/40 py-1">
-                  <div className="px-3 py-1 text-[10px] uppercase font-bold text-ink-muted tracking-wider">
-                    Switch Role (MVP View)
+                <div className="absolute right-0 mt-1.5 w-52 bg-surface border border-line/40 rounded-card shadow-2xl z-50 p-1.5">
+                  <div className="px-2.5 py-1 text-[11px] font-medium text-ink-muted">
+                    Switch role
                   </div>
                   {ROLES.map((r) => (
                     <button
@@ -220,7 +219,7 @@ export function TopBar({ plants, machines, onToggleSidebar }: TopBarProps) {
                         setIsRoleDropdownOpen(false);
                         setRole(r);
                       }}
-                      className={`w-full text-left px-3 py-2 text-xs hover:bg-surface-2 flex items-center justify-between ${
+                      className={`w-full text-left px-2.5 py-1.5 text-xs rounded-btn hover:bg-surface-2 flex items-center justify-between ${
                         r === role ? 'font-semibold text-ink bg-surface-2' : 'text-ink-muted'
                       }`}
                     >
@@ -233,28 +232,27 @@ export function TopBar({ plants, machines, onToggleSidebar }: TopBarProps) {
             )}
           </div>
 
-          {/* Demo Mode Badge */}
-          <div className="hidden md:flex items-center gap-1 px-2 py-1 bg-surface-2 rounded-btn border border-line text-[11px] font-mono font-semibold text-ink-muted">
-            <ShieldCheck className="w-3 h-3 text-agent" />
-            <span>DEMO MODE</span>
+          {/* Demo Pill (Soft style) */}
+          <div className="hidden sm:flex items-center px-2 py-0.5 rounded-full bg-agent/10 text-agent text-[11px] font-medium">
+            Demo
           </div>
 
           {/* Reset Demo Button */}
           <button
             onClick={handleResetDemo}
-            title="Reset demo data"
-            className="p-1.5 rounded-btn bg-surface-2 hover:bg-line/40 border border-line text-ink-muted hover:text-ink transition-colors"
+            title="Reset demo baseline"
+            className="p-1.5 rounded-btn hover:bg-surface-2 text-ink-muted hover:text-ink transition-colors"
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
 
-          {/* Theme Toggle (Day shift / Night shift) */}
+          {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
-            title={theme === 'light' ? 'Switch to Night shift' : 'Switch to Day shift'}
-            className="p-1.5 rounded-btn bg-surface-2 hover:bg-line/40 border border-line text-ink-muted hover:text-ink transition-colors"
+            title={theme === 'dark' ? 'Switch to Day shift' : 'Switch to Night shift'}
+            className="p-1.5 rounded-btn hover:bg-surface-2 text-ink-muted hover:text-ink transition-colors"
           >
-            {theme === 'light' ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
+            {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
           </button>
         </div>
       </header>

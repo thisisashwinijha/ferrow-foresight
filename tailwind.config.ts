@@ -27,12 +27,20 @@ const config: Config = {
         agent: "var(--agent)",
       },
       fontFamily: {
-        sans: ["var(--font-ibm-plex-sans)", "system-ui", "sans-serif"],
-        condensed: ["var(--font-ibm-plex-sans-condensed)", "system-ui", "sans-serif"],
+        sans: ["var(--font-ibm-plex-sans)", "system-ui", "-apple-system", "sans-serif"],
+        mono: ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
       },
       borderRadius: {
-        panel: "6px",
-        btn: "4px",
+        card: "12px",
+        panel: "12px",
+        btn: "8px",
+        chip: "8px",
+      },
+      transitionDuration: {
+        DEFAULT: "180ms",
+      },
+      transitionTimingFunction: {
+        DEFAULT: "cubic-bezier(0.16, 1, 0.3, 1)",
       },
     },
   },

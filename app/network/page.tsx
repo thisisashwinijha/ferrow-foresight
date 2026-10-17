@@ -3,22 +3,23 @@
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Building2,
-  Cpu,
-  Clock,
-  DollarSign,
-  AlertTriangle,
+  ChevronRight,
   ArrowUpDown,
-  ExternalLink,
-  Shield,
-  CheckCircle2,
-  Layers,
+  Search,
 } from 'lucide-react';
 import { usePlantContext } from '@/components/PlantContext';
 import { Plant, PlantStatus } from '@/lib/types';
 import { getPlants } from '@/lib/data/plants';
 
-type SortField = 'id' | 'name' | 'status' | 'machine_count' | 'sensor_pct' | 'downtime_hours_last_month' | 'downtime_cost_usd_last_month' | 'open_alerts';
+type SortField =
+  | 'id'
+  | 'name'
+  | 'status'
+  | 'machine_count'
+  | 'sensor_pct'
+  | 'downtime_hours_last_month'
+  | 'downtime_cost_usd_last_month'
+  | 'open_alerts';
 
 export default function NetworkPage() {
   const router = useRouter();
@@ -31,18 +32,12 @@ export default function NetworkPage() {
   const [regionFilter, setRegionFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Network Totals Calculations
+  // 4 Hero Metrics Calculations
   const totals = useMemo(() => {
     const totalPlants = plants.length;
     const totalMachines = plants.reduce((acc, p) => acc + (p.machine_count || 0), 0);
     const totalHours = plants.reduce((acc, p) => acc + (p.downtime_hours_last_month || 0), 0);
     const totalCost = plants.reduce((acc, p) => acc + (p.downtime_cost_usd_last_month || 0), 0);
-    const totalAlerts = plants.reduce((acc, p) => acc + (p.open_alerts || 0), 0);
-    const avgSensor =
-      plants.length > 0
-        ? Math.round(plants.reduce((acc, p) => acc + (p.sensor_pct || 0), 0) / plants.length)
-        : 0;
-
     const pilotCount = plants.filter((p) => p.status === 'pilot').length;
     const shadowCount = plants.filter((p) => p.status === 'shadow').length;
     const onboardedCount = pilotCount + shadowCount;
@@ -52,30 +47,19 @@ export default function NetworkPage() {
       totalMachines,
       totalHours: Number(totalHours.toFixed(1)),
       totalCost,
-      totalAlerts,
-      avgSensor,
       pilotCount,
       shadowCount,
       onboardedCount,
     };
   }, [plants]);
 
-  // Regions summary
-  const regions = useMemo(() => {
-    const map: Record<string, { count: number; machines: number; hours: number; onboarded: number }> = {};
+  // Regions for filter chips
+  const regionNames = useMemo(() => {
+    const set = new Set<string>();
     plants.forEach((p) => {
-      const reg = p.region || 'Other';
-      if (!map[reg]) {
-        map[reg] = { count: 0, machines: 0, hours: 0, onboarded: 0 };
-      }
-      map[reg].count += 1;
-      map[reg].machines += p.machine_count || 0;
-      map[reg].hours += p.downtime_hours_last_month || 0;
-      if (p.status === 'pilot' || p.status === 'shadow') {
-        map[reg].onboarded += 1;
-      }
+      if (p.region) set.add(p.region);
     });
-    return map;
+    return Array.from(set).sort();
   }, [plants]);
 
   // Filtered and Sorted Plants
@@ -94,7 +78,6 @@ export default function NetworkPage() {
         return true;
       })
       .sort((a, b) => {
-        // Status sort priority: pilot first, then shadow, then not_onboarded
         if (sortField === 'status') {
           const priority: Record<PlantStatus, number> = {
             pilot: 1,
@@ -131,366 +114,294 @@ export default function NetworkPage() {
     router.push(`/?plant=${plant.id}`);
   };
 
-  return (
-    <div className="space-y-5 max-w-[1600px] mx-auto">
-      {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-line/60 pb-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight text-ink">Network Health &amp; Rollout</h1>
-            <span className="px-2 py-0.5 rounded text-[11px] font-mono bg-surface-2 text-ink-muted border border-line">
-              40 plants
-            </span>
-          </div>
-          <p className="text-xs text-ink-muted mt-0.5">
-            Global overview across 40 packaging and processing facilities. USD 18,000/hr downtime baseline.
-          </p>
-        </div>
+  const pilotPct = (totals.pilotCount / totals.totalPlants) * 100;
+  const shadowPct = (totals.shadowCount / totals.totalPlants) * 100;
+  const nonOnboardedPct = 100 - pilotPct - shadowPct;
 
-        {/* Status Legend */}
-        <div className="flex items-center gap-2 text-xs">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-surface rounded-panel border border-line">
-            <span className="w-2 h-2 rounded-full bg-ok" />
-            <span className="font-medium text-ink">Pilot ({totals.pilotCount})</span>
-          </div>
-          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-surface rounded-panel border border-line">
-            <span className="w-2 h-2 rounded-full bg-ink-muted" />
-            <span className="font-medium text-ink">Shadow ({totals.shadowCount})</span>
-          </div>
-          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-surface rounded-panel border border-line text-ink-muted">
-            <span className="w-2 h-2 rounded-full bg-line" />
-            <span>Not onboarded ({totals.totalPlants - totals.onboardedCount})</span>
-          </div>
-        </div>
+  return (
+    <div className="space-y-8 max-w-[1500px] mx-auto">
+      {/* 1. Header */}
+      <div>
+        <h1 className="text-[28px] font-semibold tracking-tight text-ink">
+          Network operations
+        </h1>
+        <p className="text-[13px] text-ink-muted mt-1">
+          40 packaging and processing plants worldwide · USD 18,000 per hour baseline
+        </p>
       </div>
 
-      {/* Network Totals Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div className="bg-surface border border-line p-3 rounded-panel">
-          <div className="text-[11px] text-ink-muted flex items-center justify-between">
-            <span>Plants</span>
-            <Building2 className="w-3.5 h-3.5 text-ink-muted" />
+      {/* 2. 4 Hero Metrics */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Metric 1: Plants Onboarded */}
+        <div className="bg-surface rounded-card p-4 space-y-2">
+          <div className="text-xs text-ink-muted">Plants onboarded</div>
+          <div className="text-3xl font-light text-ink tracking-tight tabular-nums">
+            {totals.onboardedCount} of {totals.totalPlants}
           </div>
-          <div className="text-xl font-bold font-mono text-ink mt-1">
-            {totals.totalPlants}
-          </div>
-          <div className="text-[10px] text-ink-muted mt-0.5">
-            {totals.onboardedCount} active in scope
+          <div className="text-xs text-ink-muted">
+            {totals.pilotCount} pilot · {totals.shadowCount} shadow mode
           </div>
         </div>
 
-        <div className="bg-surface border border-line p-3 rounded-panel">
-          <div className="text-[11px] text-ink-muted flex items-center justify-between">
-            <span>Machines</span>
-            <Layers className="w-3.5 h-3.5 text-ink-muted" />
-          </div>
-          <div className="text-xl font-bold font-mono text-ink mt-1">
+        {/* Metric 2: Monitored Machines */}
+        <div className="bg-surface rounded-card p-4 space-y-2">
+          <div className="text-xs text-ink-muted">Machines</div>
+          <div className="text-3xl font-light text-ink tracking-tight tabular-nums">
             {totals.totalMachines.toLocaleString()}
           </div>
-          <div className="text-[10px] text-ink-muted mt-0.5">
-            94 onboarded assets
+          <div className="text-xs text-ink-muted">
+            94 assets in pilot & shadow scope
           </div>
         </div>
 
-        <div className="bg-surface border border-line p-3 rounded-panel">
-          <div className="text-[11px] text-ink-muted flex items-center justify-between">
-            <span>Sensor Coverage</span>
-            <Cpu className="w-3.5 h-3.5 text-ink-muted" />
-          </div>
-          <div className="text-xl font-bold font-mono text-ink mt-1">
-            {totals.avgSensor}%
-          </div>
-          <div className="text-[10px] text-ink-muted mt-0.5">
-            Network average
-          </div>
-        </div>
-
-        <div className="bg-surface border border-line p-3 rounded-panel">
-          <div className="text-[11px] text-ink-muted flex items-center justify-between">
-            <span>Unplanned Downtime</span>
-            <Clock className="w-3.5 h-3.5 text-ink-muted" />
-          </div>
-          <div className="text-xl font-bold font-mono text-ink mt-1">
+        {/* Metric 3: Downtime Last Month */}
+        <div className="bg-surface rounded-card p-4 space-y-2">
+          <div className="text-xs text-ink-muted">Downtime last month</div>
+          <div className="text-3xl font-light text-ink tracking-tight tabular-nums">
             {totals.totalHours} h
           </div>
-          <div className="text-[10px] text-ink-muted mt-0.5">
-            Last month total
+          <div className="text-xs text-ink-muted">
+            Unplanned network downtime
           </div>
         </div>
 
-        <div className="bg-surface border border-line p-3 rounded-panel">
-          <div className="text-[11px] text-ink-muted flex items-center justify-between">
-            <span>Downtime Cost</span>
-            <DollarSign className="w-3.5 h-3.5 text-ink-muted" />
-          </div>
-          <div className="text-xl font-bold font-mono text-ink mt-1">
+        {/* Metric 4: Downtime Cost */}
+        <div className="bg-surface rounded-card p-4 space-y-2">
+          <div className="text-xs text-ink-muted">Downtime cost</div>
+          <div className="text-3xl font-light text-ink tracking-tight tabular-nums">
             ${(totals.totalCost / 1000).toFixed(0)}k
           </div>
-          <div className="text-[10px] text-ink-muted mt-0.5">
-            $18,000 / hr / line
-          </div>
-        </div>
-
-        <div className="bg-surface border border-line p-3 rounded-panel">
-          <div className="text-[11px] text-ink-muted flex items-center justify-between">
-            <span>Open Alerts</span>
-            <AlertTriangle className="w-3.5 h-3.5 text-critical" />
-          </div>
-          <div className="text-xl font-bold font-mono text-critical mt-1">
-            {totals.totalAlerts}
-          </div>
-          <div className="text-[10px] text-ink-muted mt-0.5">
-            5 pilot · 6 shadow
+          <div className="text-xs text-ink-muted">
+            $18,000 per hour per line
           </div>
         </div>
       </div>
 
-      {/* Regional Rollout Status */}
-      <div className="space-y-2">
-        <div className="text-xs font-semibold text-ink uppercase tracking-wider">
-          Rollout Status by Region
+      {/* 3. Single Rollout Progress Bar */}
+      <div className="bg-surface rounded-card p-4 space-y-3">
+        <div className="flex items-center justify-between text-xs">
+          <span className="font-medium text-ink">Rollout progress</span>
+          <span className="text-ink-muted">
+            {totals.onboardedCount} of {totals.totalPlants} facilities onboarded (
+            {Math.round((totals.onboardedCount / totals.totalPlants) * 100)}%)
+          </span>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-          {Object.entries(regions).map(([regionName, stat]) => (
-            <div
-              key={regionName}
-              onClick={() => setRegionFilter(regionFilter === regionName ? 'all' : regionName)}
-              className={`p-3 rounded-panel border transition-all cursor-pointer ${
-                regionFilter === regionName
-                  ? 'bg-surface border-ink shadow-sm'
-                  : 'bg-surface-2 border-line hover:border-ink-muted'
+
+        {/* Proportional Progress Bar */}
+        <div className="h-2 w-full bg-surface-2 rounded-full overflow-hidden flex">
+          <div
+            style={{ width: `${pilotPct}%` }}
+            className="bg-ok h-full transition-all"
+            title={`Pilot: ${totals.pilotCount} plant`}
+          />
+          <div
+            style={{ width: `${shadowPct}%` }}
+            className="bg-agent h-full transition-all"
+            title={`Shadow: ${totals.shadowCount} plants`}
+          />
+          <div
+            style={{ width: `${nonOnboardedPct}%` }}
+            className="bg-surface-2 h-full opacity-60"
+            title={`Not onboarded: ${totals.totalPlants - totals.onboardedCount} plants`}
+          />
+        </div>
+
+        {/* Legend */}
+        <div className="flex items-center gap-4 text-xs text-ink-muted pt-1">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-ok" />
+            <span>Pilot ({totals.pilotCount})</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-agent" />
+            <span>Shadow mode ({totals.shadowCount})</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-surface-2 border border-line/40" />
+            <span>Not onboarded ({totals.totalPlants - totals.onboardedCount})</span>
+          </span>
+        </div>
+      </div>
+
+      {/* 4. Table Controls & Region Filter Chips */}
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          {/* Region Filter Chips */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button
+              onClick={() => setRegionFilter('all')}
+              className={`px-3 py-1 rounded-chip text-xs font-medium transition-all ${
+                regionFilter === 'all'
+                  ? 'bg-surface text-ink font-semibold shadow-xs'
+                  : 'text-ink-muted hover:text-ink'
               }`}
             >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-ink">{regionName}</span>
-                <span className="text-[10px] font-mono text-ink-muted">
-                  {stat.count} plants
-                </span>
-              </div>
-              <div className="mt-2 flex items-center justify-between text-xs font-mono">
-                <span className="text-ink-muted">Onboarded:</span>
-                <span className="font-bold text-ink">
-                  {stat.onboarded} / {stat.count}
-                </span>
-              </div>
-              <div className="mt-1 flex items-center justify-between text-xs font-mono">
-                <span className="text-ink-muted">Machines:</span>
-                <span className="text-ink">{stat.machines.toLocaleString()}</span>
-              </div>
-              <div className="mt-1 flex items-center justify-between text-xs font-mono">
-                <span className="text-ink-muted">Downtime:</span>
-                <span className="text-ink">{stat.hours.toFixed(1)} h</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Plants Master Table */}
-      <div className="bg-surface border border-line rounded-panel overflow-hidden">
-        {/* Table Controls */}
-        <div className="p-3 border-b border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface-2/40">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-ink">Plant Directory</span>
-            <span className="text-xs text-ink-muted">
-              ({filteredPlants.length} displayed)
-            </span>
-            {regionFilter !== 'all' && (
+              All regions
+            </button>
+            {regionNames.map((r) => (
               <button
-                onClick={() => setRegionFilter('all')}
-                className="text-[10px] text-ink-muted hover:text-ink underline ml-1"
+                key={r}
+                onClick={() => setRegionFilter(r)}
+                className={`px-3 py-1 rounded-chip text-xs font-medium transition-all ${
+                  regionFilter === r
+                    ? 'bg-surface text-ink font-semibold shadow-xs'
+                    : 'text-ink-muted hover:text-ink'
+                }`}
               >
-                Clear filter
+                {r}
               </button>
-            )}
+            ))}
           </div>
-          <div className="flex items-center gap-2">
+
+          {/* Quick search input */}
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-ink-muted absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
-              placeholder="Filter by name, ID or city..."
+              placeholder="Search plant or city..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="px-2.5 py-1 text-xs bg-surface border border-line rounded-btn text-ink outline-none w-48 sm:w-64 placeholder:text-ink-muted"
+              className="pl-8 pr-3 py-1 text-xs bg-surface-2/60 rounded-btn text-ink outline-none w-52 placeholder:text-ink-muted focus:bg-surface border border-transparent focus:border-line/30 transition-all"
             />
           </div>
         </div>
 
-        {/* Scrollable Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-surface-2 border-b border-line text-ink-muted font-medium select-none text-[11px]">
-                <th
-                  onClick={() => handleSort('id')}
-                  className="px-3 py-2 cursor-pointer hover:text-ink font-semibold"
-                >
-                  <div className="flex items-center gap-1">
-                    <span>Plant</span>
-                    <ArrowUpDown className="w-3 h-3" />
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('name')}
-                  className="px-3 py-2 cursor-pointer hover:text-ink"
-                >
-                  <div className="flex items-center gap-1">
-                    <span>Location</span>
-                    <ArrowUpDown className="w-3 h-3" />
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('status')}
-                  className="px-3 py-2 cursor-pointer hover:text-ink"
-                >
-                  <div className="flex items-center gap-1">
-                    <span>Rollout Status</span>
-                    <ArrowUpDown className="w-3 h-3" />
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('machine_count')}
-                  className="px-3 py-2 text-right cursor-pointer hover:text-ink font-mono"
-                >
-                  <div className="flex items-center justify-end gap-1">
-                    <span>Machines</span>
-                    <ArrowUpDown className="w-3 h-3" />
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('sensor_pct')}
-                  className="px-3 py-2 text-right cursor-pointer hover:text-ink font-mono"
-                >
-                  <div className="flex items-center justify-end gap-1">
-                    <span>Sensor %</span>
-                    <ArrowUpDown className="w-3 h-3" />
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('downtime_hours_last_month')}
-                  className="px-3 py-2 text-right cursor-pointer hover:text-ink font-mono"
-                >
-                  <div className="flex items-center justify-end gap-1">
-                    <span>Downtime (h)</span>
-                    <ArrowUpDown className="w-3 h-3" />
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('downtime_cost_usd_last_month')}
-                  className="px-3 py-2 text-right cursor-pointer hover:text-ink font-mono"
-                >
-                  <div className="flex items-center justify-end gap-1">
-                    <span>Cost ($)</span>
-                    <ArrowUpDown className="w-3 h-3" />
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('open_alerts')}
-                  className="px-3 py-2 text-right cursor-pointer hover:text-ink font-mono"
-                >
-                  <div className="flex items-center justify-end gap-1">
-                    <span>Alerts</span>
-                    <ArrowUpDown className="w-3 h-3" />
-                  </div>
-                </th>
-                <th className="px-3 py-2 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line/40">
-              {filteredPlants.map((plant) => {
-                const isOnboarded = plant.status === 'pilot' || plant.status === 'shadow';
-
-                return (
-                  <tr
-                    key={plant.id}
-                    onClick={() => handleRowClick(plant)}
-                    className={`transition-colors ${
-                      isOnboarded
-                        ? 'hover:bg-surface-2 cursor-pointer font-medium'
-                        : 'text-ink-muted/70 bg-surface/30 cursor-not-allowed select-none'
-                    }`}
+        {/* Clean Plant Table */}
+        <div className="bg-surface rounded-card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-line/20 text-ink-muted text-[12px] font-medium select-none">
+                  <th
+                    onClick={() => handleSort('id')}
+                    className="px-4 py-3 cursor-pointer hover:text-ink font-medium"
                   >
-                    <td className="px-3 py-2.5 font-mono text-ink">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-bold">{plant.id}</span>
+                    <div className="flex items-center gap-1">
+                      <span>Plant</span>
+                      <ArrowUpDown className="w-3 h-3 opacity-60" />
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort('name')}
+                    className="px-4 py-3 cursor-pointer hover:text-ink"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Location</span>
+                      <ArrowUpDown className="w-3 h-3 opacity-60" />
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort('status')}
+                    className="px-4 py-3 cursor-pointer hover:text-ink"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Status</span>
+                      <ArrowUpDown className="w-3 h-3 opacity-60" />
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort('machine_count')}
+                    className="px-4 py-3 text-right cursor-pointer hover:text-ink"
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      <span>Machines</span>
+                      <ArrowUpDown className="w-3 h-3 opacity-60" />
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort('sensor_pct')}
+                    className="px-4 py-3 text-right cursor-pointer hover:text-ink"
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      <span>Sensors</span>
+                      <ArrowUpDown className="w-3 h-3 opacity-60" />
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort('downtime_hours_last_month')}
+                    className="px-4 py-3 text-right cursor-pointer hover:text-ink"
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      <span>Downtime</span>
+                      <ArrowUpDown className="w-3 h-3 opacity-60" />
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort('downtime_cost_usd_last_month')}
+                    className="px-4 py-3 text-right cursor-pointer hover:text-ink"
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      <span>Cost</span>
+                      <ArrowUpDown className="w-3 h-3 opacity-60" />
+                    </div>
+                  </th>
+                  <th className="px-4 py-3 text-right"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line/15">
+                {filteredPlants.map((plant) => {
+                  const isOnboarded =
+                    plant.status === 'pilot' || plant.status === 'shadow';
+
+                  return (
+                    <tr
+                      key={plant.id}
+                      onClick={() => handleRowClick(plant)}
+                      className={`group transition-colors ${
+                        isOnboarded
+                          ? 'hover:bg-surface-2/40 cursor-pointer'
+                          : 'opacity-40 cursor-not-allowed select-none'
+                      }`}
+                    >
+                      <td className="px-4 py-3 font-mono font-medium text-ink">
+                        {plant.id}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-ink">{plant.name}</div>
+                        <div className="text-[11px] text-ink-muted">
+                          {plant.city}, {plant.country}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
                         {plant.status === 'pilot' && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-ok" />
+                          <span className="inline-block px-2 py-0.5 rounded-chip text-[11px] font-medium bg-ok/10 text-ok">
+                            Pilot
+                          </span>
                         )}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <div className="font-semibold text-ink">{plant.name}</div>
-                      <div className="text-[11px] text-ink-muted">
-                        {plant.city}, {plant.country} · {plant.region}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2.5">
-                      {plant.status === 'pilot' && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-ok/20 text-ok border border-ok/30">
-                          <CheckCircle2 className="w-3 h-3" />
-                          Pilot (Live)
-                        </span>
-                      )}
-                      {plant.status === 'shadow' && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-ink/10 text-ink border border-line">
-                          <Shield className="w-3 h-3 text-ink-muted" />
-                          Shadow mode
-                        </span>
-                      )}
-                      {plant.status === 'not_onboarded' && (
-                        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-mono text-ink-muted/60 bg-surface-2">
-                          Not onboarded
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2.5 text-right font-mono">
-                      <span>{plant.machine_count}</span>
-                      {isOnboarded && (
-                        <span className="text-[10px] text-ink-muted ml-1">
-                          ({plant.onboarded_machines})
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2.5 text-right font-mono">
-                      {plant.sensor_pct.toFixed(0)}%
-                    </td>
-                    <td className="px-3 py-2.5 text-right font-mono">
-                      {plant.downtime_hours_last_month.toFixed(1)}
-                    </td>
-                    <td className="px-3 py-2.5 text-right font-mono">
-                      ${plant.downtime_cost_usd_last_month.toLocaleString()}
-                    </td>
-                    <td className="px-3 py-2.5 text-right font-mono">
-                      {plant.open_alerts > 0 ? (
-                        <span className="px-1.5 py-0.5 bg-critical/20 text-critical font-bold rounded">
-                          {plant.open_alerts}
-                        </span>
-                      ) : (
-                        <span className="text-ink-muted">0</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2.5 text-right">
-                      {isOnboarded ? (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRowClick(plant);
-                          }}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-btn bg-surface hover:bg-surface-2 text-ink border border-line text-[11px] font-medium"
-                        >
-                          <span>Control Room</span>
-                          <ExternalLink className="w-3 h-3 text-ink-muted" />
-                        </button>
-                      ) : (
-                        <span className="text-[11px] text-ink-muted/50 italic">
-                          Locked
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                        {plant.status === 'shadow' && (
+                          <span className="inline-block px-2 py-0.5 rounded-chip text-[11px] font-medium bg-ink/10 text-ink-muted">
+                            Shadow mode
+                          </span>
+                        )}
+                        {plant.status === 'not_onboarded' && (
+                          <span className="inline-block px-2 py-0.5 rounded-chip text-[11px] text-ink-muted bg-surface-2/60">
+                            Not onboarded
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-ink">
+                        {plant.machine_count}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-ink">
+                        {plant.sensor_pct.toFixed(0)}%
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-ink">
+                        {plant.downtime_hours_last_month.toFixed(1)}h
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-ink">
+                        ${plant.downtime_cost_usd_last_month.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {isOnboarded ? (
+                          <ChevronRight className="w-4 h-4 text-ink-muted opacity-0 group-hover:opacity-100 transition-opacity inline" />
+                        ) : null}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

@@ -2,13 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Night shift as default on :root */
 :root {
-  --canvas: #DDE1E4;
-  --surface: #F2F4F5;
-  --surface-2: #E8EBED;
-  --ink: #1E252B;
-  --ink-muted: #5B6670;
-  --line: #BCC3C9;
+  --canvas: #14171A;
+  --surface: #1C2024;
+  --surface-2: #24292E;
+  --ink: #EDF0F2;
+  --ink-muted: #8B949E;
+  --line: #2D3339;
+  --critical: #E5484D;
+  --high: #F0883E;
+  --medium: #D9B310;
+  --ok: #4CAF78;
+  --agent: #7C9BE8;
+}
+
+/* Day shift on [data-theme="light"] */
+[data-theme="light"] {
+  --canvas: #F7F8F9;
+  --surface: #FFFFFF;
+  --surface-2: #F0F2F4;
+  --ink: #181B1E;
+  --ink-muted: #656F7D;
+  --line: #E2E5E8;
   --critical: #C4161C;
   --high: #D9711C;
   --medium: #B89600;
@@ -17,33 +33,17 @@
 }
 
 [data-theme="dark"] {
-  --canvas: #1B2126;
-  --surface: #232A30;
-  --surface-2: #2C343B;
-  --ink: #E3E7EA;
-  --ink-muted: #9AA5AE;
-  --line: #3A444C;
+  --canvas: #14171A;
+  --surface: #1C2024;
+  --surface-2: #24292E;
+  --ink: #EDF0F2;
+  --ink-muted: #8B949E;
+  --line: #2D3339;
   --critical: #E5484D;
   --high: #F0883E;
   --medium: #D9B310;
   --ok: #4CAF78;
   --agent: #7C9BE8;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --canvas: #1B2126;
-    --surface: #232A30;
-    --surface-2: #2C343B;
-    --ink: #E3E7EA;
-    --ink-muted: #9AA5AE;
-    --line: #3A444C;
-    --critical: #E5484D;
-    --high: #F0883E;
-    --medium: #D9B310;
-    --ok: #4CAF78;
-    --agent: #7C9BE8;
-  }
 }
 
 * {
@@ -61,24 +61,26 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* AI suggestion left border utility */
-.agent-accent {
-  border-left: 2px solid var(--agent);
+/* Transitions */
+button, a, input, select {
+  transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Pulse animation for abnormal tiles when alerts trigger */
-@keyframes pulse-once {
-  0% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.04); box-shadow: 0 0 10px var(--critical); }
-  100% { transform: scale(1); opacity: 1; }
+/* Pulse animation for abnormal tiles */
+@keyframes pulse-attention {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(229, 72, 77, 0.4); }
+  50% { transform: scale(1.02); box-shadow: 0 0 12px 2px rgba(229, 72, 77, 0.25); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(229, 72, 77, 0); }
 }
 
 .animate-pulse-abnormal {
-  animation: pulse-once 1.2s ease-in-out infinite;
+  animation: pulse-attention 2s infinite ease-in-out;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-pulse-abnormal {
-    animation: none;
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

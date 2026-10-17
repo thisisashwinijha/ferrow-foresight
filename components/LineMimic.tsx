@@ -3,7 +3,6 @@
 import React from 'react';
 import { Line, Machine, Alert } from '@/lib/types';
 import { MachineTile } from './MachineTile';
-import { Layers } from 'lucide-react';
 
 interface LineMimicProps {
   lines: Line[];
@@ -36,28 +35,24 @@ export function LineMimic({ lines, machines, alerts }: LineMimicProps) {
           .sort((a, b) => a.id.localeCompare(b.id));
 
         return (
-          <div
-            key={line.id}
-            className="bg-surface border border-line rounded-panel p-3 shadow-xs space-y-2"
-          >
-            {/* Line Header */}
-            <div className="flex items-center justify-between border-b border-line/40 pb-2">
-              <div className="flex items-center gap-2">
-                <Layers className="w-3.5 h-3.5 text-ink-muted" />
-                <span className="font-mono text-xs font-bold text-ink">{line.id}</span>
-                <span className="text-line">|</span>
-                <span className="text-xs font-semibold text-ink">{line.name}</span>
-                <span className="text-xs text-ink-muted hidden sm:inline">
+          <div key={line.id} className="space-y-2">
+            {/* Line Title */}
+            <div className="flex items-center justify-between text-xs text-ink-muted">
+              <div className="flex items-center gap-1.5 font-medium text-ink">
+                <span className="font-mono text-ink-muted">{line.id}</span>
+                <span>·</span>
+                <span>{line.name}</span>
+                <span className="text-ink-muted hidden sm:inline font-normal">
                   ({line.product})
                 </span>
               </div>
-              <div className="text-[11px] font-mono text-ink-muted">
-                {lineMachines.length} machines in sequence
-              </div>
+              <span className="text-[11px] text-ink-muted">
+                {lineMachines.length} assets
+              </span>
             </div>
 
-            {/* Horizontal Flow of Machine Tiles */}
-            <div className="flex items-center gap-2.5 overflow-x-auto pb-1.5 pt-1 scrollbar-thin">
+            {/* Wrapping flow of machines */}
+            <div className="flex flex-wrap items-center gap-2">
               {lineMachines.map((m) => (
                 <MachineTile
                   key={m.id}

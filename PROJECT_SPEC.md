@@ -86,36 +86,36 @@ golden/              golden dataset + README
 scripts/             eval script
 ```
 
-## 6. Design system: "Grey is normal. Colour means attention."
+## 6. Design system: "Grey is normal. Colour means attention." (Modern Linear / Vercel feel)
 
-Inspired by ISA-101 high-performance HMI practice used in real control rooms: neutral greys for normal state, colour reserved for abnormal states, so problems jump out.
+Inspired by modern operational tooling (Linear, Vercel dashboard) and ISA-101 high-performance HMI practice: neutral greys and subtle surface tints for normal state, color reserved strictly for abnormal states, so problems immediately draw focus.
 
-Tokens (CSS variables on :root, dark values under [data-theme="dark"] and prefers-color-scheme):
+Tokens (CSS variables on :root for Night shift default, [data-theme="light"] for Day shift):
 
-| Token | Day shift (default) | Night shift |
+| Token | Night shift (default) | Day shift |
 |---|---|---|
-| --canvas | #DDE1E4 | #1B2126 |
-| --surface | #F2F4F5 | #232A30 |
-| --surface-2 | #E8EBED | #2C343B |
-| --ink | #1E252B | #E3E7EA |
-| --ink-muted | #5B6670 | #9AA5AE |
-| --line | #BCC3C9 | #3A444C |
-| --critical (P1) | #C4161C | #E5484D |
-| --high (P2) | #D9711C | #F0883E |
-| --medium (P3 / watch) | #B89600 | #D9B310 |
-| --ok (closed, confirmed) | #2F7A4E | #4CAF78 |
-| --agent (AI suggestions only) | #3A5DAE | #7C9BE8 |
+| --canvas | #14171A | #F7F8F9 |
+| --surface | #1C2024 | #FFFFFF |
+| --surface-2 | #24292E | #F0F2F4 |
+| --ink | #EDF0F2 | #181B1E |
+| --ink-muted | #8B949E | #656F7D |
+| --line | #2D3339 | #E2E5E8 |
+| --critical (P1) | #E5484D | #C4161C |
+| --high (P2) | #F0883E | #D9711C |
+| --medium (P3 / watch) | #D9B310 | #B89600 |
+| --ok (closed, confirmed) | #4CAF78 | #2F7A4E |
+| --agent (AI suggestions) | #7C9BE8 | #3A5DAE |
 
 Rules:
-- Normal machines are grey. Only abnormal states get colour. Never colour something just to decorate.
-- Alerts from shadow-mode plants carry a "Shadow mode" tag and cannot be dispatched.
-- Anything produced by the AI agent has a thin --agent left border and a small "AI suggestion" tag, so humans always know what is machine-generated.
-- Type: IBM Plex Sans for everything, IBM Plex Sans Condensed for dense tables. Tabular numbers for all figures. Sentence case labels, no all-caps eyebrows.
-- Radius 6px on panels, 4px on chips and buttons. No gradients. Shadows only on popovers and dialogs.
-- Density: this is an operations tool. Compact tables, 13 to 14px body, clear hierarchy.
-- The one memorable element: the Control Room line mimic, where each line is a row of machine tiles and abnormal tiles pulse once when a new alert arrives.
-- Copy: plain verbs, active voice. Buttons say exactly what happens ("Approve work order", "Reject alert"). Toasts repeat the same verb ("Work order approved").
-- Accessibility: visible keyboard focus, colour is never the only signal (always add text or icon), respects prefers-reduced-motion.
+- Surfaces: remove heavy borders. Separate sections with generous spacing and subtle surface tints. Cards radius 12px, buttons and chips 8px. Avoid unnecessary inner divider lines.
+- Typography: IBM Plex Sans only, tabular-nums for figures. Monospace only for asset IDs inside tables. No all-caps anywhere; sentence case for every heading, label, and badge. Strong size contrast: page title 28px semibold, hero numbers 32 to 36px light or regular weight, labels 13px muted.
+- Badges: soft tinted style (colored text on a 10 to 15% opacity background of the same color), never solid fills except the P1 count.
+- Colour use: alarm colors only on things that need attention. The --agent color only as a small "AI" badge or marker, not heavy borders everywhere.
+- Spacing: generous. Page padding at least 32px on desktop. Fewer elements per screen to preserve calm and clarity.
+- Motion: 150 to 200ms ease transitions on hover, panels, drawers, and tabs. Respect prefers-reduced-motion.
+- Navigation: slim icon rail (64px) with tooltips, expandable on toggle or hover. Top bar: plant switcher on left, command search center (Cmd+K), role, demo pill, and theme toggle right. Keep it light, without heavy boxes.
+- Detail views: open in a right-side sheet/drawer where sensible instead of new cluttered sections.
+- Accessibility: visible keyboard focus, color is never the only signal (always text or icon), respects prefers-reduced-motion.
 
 ## 7. Live feel (demo must look real-time)
 

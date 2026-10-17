@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { usePlantContext } from './PlantContext';
 import { getPlantById } from '@/lib/data/plants';
 import { getLines } from '@/lib/data/lines';
@@ -10,11 +10,13 @@ import { getLatestKpiSnapshot, getPreviousKpiSnapshot } from '@/lib/data/kpis';
 import { KpiStrip } from './KpiStrip';
 import { LineMimic } from './LineMimic';
 import { LiveAlertFeed } from './LiveAlertFeed';
-import { ApprovalsQueue } from './ApprovalsQueue';
-import { CheckCircle2, Shield, Layers, Filter } from 'lucide-react';
+import { AttentionSection } from './AttentionSection';
+import { AlertDetailSheet } from './AlertDetailSheet';
+import { Alert } from '@/lib/types';
 
 export function ControlRoomView() {
   const { plantId, lineId, setLineId } = usePlantContext();
+  const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
 
   const plant = useMemo(() => getPlantById(plantId), [plantId]);
   const lines = useMemo(() => getLines(plantId), [plantId]);
@@ -29,134 +31,122 @@ export function ControlRoomView() {
     return lines.filter((l) => l.id === lineId);
   }, [lines, lineId]);
 
+  const scopeLabel = plant?.status === 'pilot' ? 'pilot scope' : 'shadow scope';
+  const subtitle = `${lines.length} of ${plant?.lines_count || 7} lines in ${scopeLabel} · ${plant?.onboarded_machines || machines.length} monitored assets`;
+
   return (
-    <div className="space-y-4 max-w-[1600px] mx-auto">
-      {/* Control Room Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-line/60 pb-3">
+    <div className="space-y-8 max-w-[1500px] mx-auto">
+      {/* 1. Page Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight text-ink">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-[28px] font-semibold tracking-tight text-ink">
               {plant?.name || `Plant ${plantId}`}
             </h1>
-            <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-surface-2 text-ink border border-line">
-              {plantId}
-            </span>
             {plant?.status === 'pilot' && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-ok/20 text-ok border border-ok/30">
-                <CheckCircle2 className="w-3 h-3" />
-                Pilot (Live)
+              <span className="px-2.5 py-0.5 rounded-chip text-xs font-medium bg-ok/10 text-ok">
+                Pilot
               </span>
             )}
             {plant?.status === 'shadow' && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-ink/10 text-ink border border-line">
-                <Shield className="w-3 h-3 text-ink-muted" />
+              <span className="px-2.5 py-0.5 rounded-chip text-xs font-medium bg-ink/10 text-ink-muted">
                 Shadow mode
               </span>
             )}
           </div>
-          <p className="text-xs text-ink-muted mt-0.5">
-            {plant?.location || 'Plant location'} · {plant?.lines_count || lines.length} Production Lines · {machines.length} Monitored Assets · Sensor Scope: {plant?.sensor_pct || 0}%
+          <p className="text-[13px] text-ink-muted mt-1">
+            {subtitle}
           </p>
         </div>
 
-        {/* Line Filter Chips */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <div className="flex items-center gap-1 text-[11px] text-ink-muted mr-1">
-            <Filter className="w-3 h-3" />
-            <span>Line:</span>
-          </div>
-
+        {/* Line Filter as Segmented Control */}
+        <div className="bg-surface-2/60 p-1 rounded-btn flex items-center gap-1 self-start md:self-auto overflow-x-auto max-w-full">
           <button
             onClick={() => setLineId('all')}
-            className={`px-2.5 py-1 text-xs rounded-btn transition-colors border ${
+            className={`px-3 py-1 rounded-chip text-xs font-medium transition-all ${
               lineId === 'all' || !lineId
-                ? 'bg-ink text-surface font-semibold border-ink'
-                : 'bg-surface hover:bg-surface-2 text-ink border-line'
+                ? 'bg-surface text-ink font-semibold shadow-xs'
+                : 'text-ink-muted hover:text-ink'
             }`}
           >
-            All lines ({lines.length})
+            All lines
           </button>
-
           {lines.map((l) => (
             <button
               key={l.id}
               onClick={() => setLineId(l.id)}
-              className={`px-2.5 py-1 text-xs rounded-btn transition-colors border font-mono ${
+              className={`px-3 py-1 rounded-chip text-xs font-medium transition-all font-mono whitespace-nowrap ${
                 lineId === l.id
-                  ? 'bg-ink text-surface font-semibold border-ink'
-                  : 'bg-surface hover:bg-surface-2 text-ink border-line'
+                  ? 'bg-surface text-ink font-semibold shadow-xs'
+                  : 'text-ink-muted hover:text-ink'
               }`}
             >
               <span>{l.id}</span>
-              <span className="hidden sm:inline text-[11px] font-sans ml-1 text-inherit opacity-80">
-                ({l.name.replace(/Line \d+ /, '')})
+              <span className="font-sans ml-1 opacity-70 hidden sm:inline">
+                {l.name.replace(/Line \d+ /, '')}
               </span>
             </button>
           ))}
         </div>
       </div>
 
-      {/* KPI Strip */}
+      {/* 2. Needs Your Attention (Page Focal Point) */}
+      <AttentionSection
+        alerts={alerts}
+        plant={plant}
+        onSelectAlert={(a) => setSelectedAlert(a)}
+      />
+
+      {/* 3. Hero Metrics Strip (4 Hero Numbers) */}
       <KpiStrip
         current={currentKpi}
         previous={previousKpi}
         alerts={alerts}
       />
 
-      {/* Main Grid: Line Mimic + Approvals (Left) & Live Alert Feed (Right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-        {/* Left Column: Line Mimic & Approvals Queue */}
-        <div className="lg:col-span-8 xl:col-span-8 space-y-4">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Layers className="w-4 h-4 text-ink-muted" />
-                <h2 className="text-xs font-bold text-ink uppercase tracking-wider">
-                  Line Mimic Overview
-                </h2>
-              </div>
-              <div className="text-[11px] text-ink-muted flex items-center gap-2 font-mono">
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-xs bg-surface border border-line" />
-                  <span>Normal</span>
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-xs bg-critical" />
-                  <span>P1 Alert</span>
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-xs bg-high" />
-                  <span>P2 Alert</span>
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-xs bg-medium" />
-                  <span>P3 Alert</span>
-                </span>
-              </div>
+      {/* 4. Main Body: Line Mimic (Left) & Compact Recent Activity (Right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left: Clean Line Mimic */}
+        <div className="lg:col-span-8 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-ink tracking-tight">
+              Line mimic
+            </h2>
+            <div className="text-xs text-ink-muted flex items-center gap-3">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-surface-2 border border-line/40" />
+                <span>Normal</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-critical" />
+                <span>Attention</span>
+              </span>
             </div>
-
-            <LineMimic
-              lines={displayedLines}
-              machines={machines}
-              alerts={alerts}
-            />
           </div>
 
-          {/* Approvals Queue Section */}
-          <ApprovalsQueue
+          <LineMimic
+            lines={displayedLines}
+            machines={machines}
             alerts={alerts}
-            plant={plant}
           />
         </div>
 
-        {/* Right Column: Live Alert Feed */}
-        <div className="lg:col-span-4 xl:col-span-4 sticky top-18">
+        {/* Right: Compact Recent Activity */}
+        <div className="lg:col-span-4 sticky top-20">
           <LiveAlertFeed
             alerts={alerts}
             plant={plant}
+            onSelectAlert={(a) => setSelectedAlert(a)}
           />
         </div>
       </div>
+
+      {/* Side Sheet Drawer for Alert Details */}
+      <AlertDetailSheet
+        alert={selectedAlert}
+        plant={plant}
+        onClose={() => setSelectedAlert(null)}
+      />
     </div>
   );
 }
