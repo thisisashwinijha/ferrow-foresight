@@ -2,22 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Night shift as default on :root */
+/* Day shift (light mode) as default on :root */
 :root {
-  --canvas: #14171A;
-  --surface: #1C2024;
-  --surface-2: #24292E;
-  --ink: #EDF0F2;
-  --ink-muted: #8B949E;
-  --line: #2D3339;
-  --critical: #E5484D;
-  --high: #F0883E;
-  --medium: #D9B310;
-  --ok: #4CAF78;
-  --agent: #7C9BE8;
+  --canvas: #F7F8F9;
+  --surface: #FFFFFF;
+  --surface-2: #F0F2F4;
+  --ink: #181B1E;
+  --ink-muted: #656F7D;
+  --line: #E2E5E8;
+  --critical: #C4161C;
+  --high: #D9711C;
+  --medium: #B89600;
+  --ok: #2F7A4E;
+  --agent: #3A5DAE;
 }
 
-/* Day shift on [data-theme="light"] */
 [data-theme="light"] {
   --canvas: #F7F8F9;
   --surface: #FFFFFF;
@@ -32,6 +31,7 @@
   --agent: #3A5DAE;
 }
 
+/* Night shift on [data-theme="dark"] */
 [data-theme="dark"] {
   --canvas: #14171A;
   --surface: #1C2024;

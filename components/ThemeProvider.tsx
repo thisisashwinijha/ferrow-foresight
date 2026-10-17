@@ -6,35 +6,41 @@ type Theme = 'light' | 'dark';
 
 interface ThemeContextType {
   theme: Theme;
+  setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType>({
-  theme: 'dark',
+  theme: 'light',
+  setTheme: () => {},
   toggleTheme: () => {},
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('dark');
+  const [theme, setCustomTheme] = useState<Theme>('light');
+
+  const applyTheme = (nextTheme: Theme) => {
+    setCustomTheme(nextTheme);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ferrow-theme', nextTheme);
+      document.documentElement.setAttribute('data-theme', nextTheme);
+    }
+  };
 
   useEffect(() => {
     const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
     const urlTheme = params?.get('theme') as Theme | null;
     const saved = typeof window !== 'undefined' ? (localStorage.getItem('ferrow-theme') as Theme | null) : null;
-    const initial = (urlTheme === 'light' || urlTheme === 'dark') ? urlTheme : (saved || 'dark'); // Night shift is default
-    setTheme(initial);
-    document.documentElement.setAttribute('data-theme', initial);
+    const initial = (urlTheme === 'light' || urlTheme === 'dark') ? urlTheme : (saved || 'light');
+    applyTheme(initial);
   }, []);
 
   const toggleTheme = () => {
-    const nextTheme: Theme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(nextTheme);
-    localStorage.setItem('ferrow-theme', nextTheme);
-    document.documentElement.setAttribute('data-theme', nextTheme);
+    applyTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme: applyTheme, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
   );

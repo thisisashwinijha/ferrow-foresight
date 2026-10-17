@@ -90,21 +90,21 @@ scripts/             eval script
 
 Inspired by modern operational tooling (Linear, Vercel dashboard) and ISA-101 high-performance HMI practice: neutral greys and subtle surface tints for normal state, color reserved strictly for abnormal states, so problems immediately draw focus.
 
-Tokens (CSS variables on :root for Night shift default, [data-theme="light"] for Day shift):
+Tokens (CSS variables on :root for Day shift default, [data-theme="dark"] for Night shift):
 
-| Token | Night shift (default) | Day shift |
+| Token | Day shift (default) | Night shift |
 |---|---|---|
-| --canvas | #14171A | #F7F8F9 |
-| --surface | #1C2024 | #FFFFFF |
-| --surface-2 | #24292E | #F0F2F4 |
-| --ink | #EDF0F2 | #181B1E |
-| --ink-muted | #8B949E | #656F7D |
-| --line | #2D3339 | #E2E5E8 |
-| --critical (P1) | #E5484D | #C4161C |
-| --high (P2) | #F0883E | #D9711C |
-| --medium (P3 / watch) | #D9B310 | #B89600 |
-| --ok (closed, confirmed) | #4CAF78 | #2F7A4E |
-| --agent (AI suggestions) | #7C9BE8 | #3A5DAE |
+| --canvas | #F7F8F9 | #14171A |
+| --surface | #FFFFFF | #1C2024 |
+| --surface-2 | #F0F2F4 | #24292E |
+| --ink | #181B1E | #EDF0F2 |
+| --ink-muted | #656F7D | #8B949E |
+| --line | #E2E5E8 | #2D3339 |
+| --critical (P1) | #C4161C | #E5484D |
+| --high (P2) | #D9711C | #F0883E |
+| --medium (P3 / watch) | #B89600 | #D9B310 |
+| --ok (closed, confirmed) | #2F7A4E | #4CAF78 |
+| --agent (AI suggestions) | #3A5DAE | #7C9BE8 |
 
 Rules:
 - Surfaces: remove heavy borders. Separate sections with generous spacing and subtle surface tints. Cards radius 12px, buttons and chips 8px. Avoid unnecessary inner divider lines.

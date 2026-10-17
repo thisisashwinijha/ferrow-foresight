@@ -32,6 +32,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      data-theme="light"
       className={ibmPlexSans.variable}
       suppressHydrationWarning
     >

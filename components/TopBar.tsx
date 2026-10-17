@@ -39,7 +39,7 @@ const ROLES: UserRole[] = [
 export function TopBar({ plants, machines, onToggleSidebar }: TopBarProps) {
   const router = useRouter();
   const { plantId, setPlantId, role, setRole, lineId } = usePlantContext();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const { showToast } = useToast();
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -246,14 +246,33 @@ export function TopBar({ plants, machines, onToggleSidebar }: TopBarProps) {
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
 
-          {/* Theme Toggle */}
-          <button
-            onClick={toggleTheme}
-            title={theme === 'dark' ? 'Switch to Day shift' : 'Switch to Night shift'}
-            className="p-1.5 rounded-btn hover:bg-surface-2 text-ink-muted hover:text-ink transition-colors"
-          >
-            {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
-          </button>
+          {/* Segmented Day / Night Shift Theme Switcher */}
+          <div className="flex items-center bg-surface-2/60 p-0.5 rounded-btn text-xs border border-line/20">
+            <button
+              onClick={() => setTheme('light')}
+              title="Day shift (Light mode)"
+              className={`flex items-center gap-1 px-2 py-0.5 rounded-chip transition-all ${
+                theme === 'light'
+                  ? 'bg-surface text-ink font-semibold shadow-xs'
+                  : 'text-ink-muted hover:text-ink'
+              }`}
+            >
+              <Sun className={`w-3.5 h-3.5 ${theme === 'light' ? 'text-amber-500' : ''}`} />
+              <span className="hidden sm:inline text-[11px]">Day</span>
+            </button>
+            <button
+              onClick={() => setTheme('dark')}
+              title="Night shift (Dark mode)"
+              className={`flex items-center gap-1 px-2 py-0.5 rounded-chip transition-all ${
+                theme === 'dark'
+                  ? 'bg-surface text-ink font-semibold shadow-xs'
+                  : 'text-ink-muted hover:text-ink'
+              }`}
+            >
+              <Moon className={`w-3.5 h-3.5 ${theme === 'dark' ? 'text-blue-400' : ''}`} />
+              <span className="hidden sm:inline text-[11px]">Night</span>
+            </button>
+          </div>
         </div>
       </header>
 
