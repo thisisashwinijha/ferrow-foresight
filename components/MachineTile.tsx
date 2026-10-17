@@ -3,11 +3,9 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Activity,
   ClipboardCheck,
   Wrench,
   AlertTriangle,
-  Eye,
   WifiOff,
 } from 'lucide-react';
 import { Machine, Alert } from '@/lib/types';
@@ -32,7 +30,6 @@ export function MachineTile({ machine, activeAlert, sequenceIndex }: MachineTile
   );
 
   const [mounted, setMounted] = React.useState(false);
-
   React.useEffect(() => {
     setMounted(true);
   }, []);
@@ -59,31 +56,7 @@ export function MachineTile({ machine, activeAlert, sequenceIndex }: MachineTile
   const isP1 = urgency === 'P1';
   const isP2 = urgency === 'P2';
   const isP3 = urgency === 'P3';
-
-  // Determine container styling based on abnormal status vs calm normal
-  let cardStyle =
-    'bg-surface hover:bg-surface-2 border-line/40 hover:border-line/70';
-  let badgeStyle = '';
-
-  if (isP1) {
-    cardStyle =
-      'bg-critical/5 border-critical/40 hover:bg-critical/10 hover:border-critical/60';
-    badgeStyle = 'bg-critical/15 text-critical border border-critical/30';
-  } else if (isP2) {
-    cardStyle =
-      'bg-high/5 border-high/40 hover:bg-high/10 hover:border-high/60';
-    badgeStyle = 'bg-high/15 text-high border border-high/30';
-  } else if (isP3) {
-    cardStyle =
-      'bg-medium/5 border-medium/40 hover:bg-medium/10 hover:border-medium/60';
-    badgeStyle = 'bg-medium/15 text-medium border border-medium/30';
-  } else if (isMaintenance) {
-    cardStyle = 'bg-medium/5 border-medium/30 hover:bg-medium/10';
-    badgeStyle = 'bg-medium/15 text-medium border border-medium/30';
-  } else if (isOffline) {
-    cardStyle = 'bg-surface-2/40 border-dashed border-line/60 opacity-80';
-    badgeStyle = 'bg-surface-2 text-ink-muted border border-line/40';
-  }
+  const isAbnormal = isP1 || isP2 || isP3 || isMaintenance || isOffline;
 
   // Sparkline calculation for sensor machines
   const points = telemetry?.sparkline || [];
@@ -92,7 +65,7 @@ export function MachineTile({ machine, activeAlert, sequenceIndex }: MachineTile
   const range = maxVal - minVal || 1;
 
   const width = 42;
-  const height = 16;
+  const height = 15;
   const pathD =
     points.length > 1
       ? points
@@ -104,103 +77,149 @@ export function MachineTile({ machine, activeAlert, sequenceIndex }: MachineTile
           .join(' ')
       : '';
 
-  const sparklineColor = isP1
-    ? 'text-critical stroke-critical'
-    : isP2
-    ? 'text-high stroke-high'
-    : 'text-emerald-500/80 stroke-emerald-500/80';
+  // CALM, LIGHT SURFACES:
+  // Normal machines: soft borderless or ultra-subtle tint. No bright outlines.
+  // Abnormal machines: soft alert tint so they naturally draw the eye.
+  let cardStyle =
+    'bg-surface/50 hover:bg-surface border border-line/20 hover:border-line/40 text-ink';
+
+  if (isP1) {
+    cardStyle =
+      'bg-critical/10 border border-critical/40 hover:bg-critical/15 hover:border-critical/60 shadow-xs';
+  } else if (isP2) {
+    cardStyle =
+      'bg-high/10 border border-high/40 hover:bg-high/15 hover:border-high/60 shadow-xs';
+  } else if (isP3) {
+    cardStyle =
+      'bg-medium/10 border border-medium/40 hover:bg-medium/15 hover:border-medium/60 shadow-xs';
+  } else if (isMaintenance) {
+    cardStyle =
+      'bg-medium/5 border border-medium/30 hover:bg-medium/10 text-medium';
+  } else if (isOffline) {
+    cardStyle =
+      'bg-surface-2/30 border border-dashed border-line/40 opacity-70';
+  }
+
+  const currentVib = mounted
+    ? telemetry.vibration_mm_s
+    : machine.vibration_baseline || 1.8;
 
   return (
     <div
       onClick={handleClick}
-      className={`group relative p-2.5 rounded-card border ${cardStyle} cursor-pointer transition-all duration-150 hover:scale-[1.01] hover:shadow-xs flex flex-col justify-between h-[96px] select-none`}
+      className={`group relative p-2.5 rounded-card ${cardStyle} cursor-pointer transition-all duration-150 hover:scale-[1.01] flex flex-col justify-between h-[86px] select-none`}
     >
-      {/* 1. Top row: Sequence + Machine ID on left, Badge on right */}
-      <div className="flex items-center justify-between gap-1">
+      {/* 1. Header: Step & ID + Quiet Asset Type or Urgency */}
+      <div className="flex items-center justify-between text-[11px] leading-none">
         <div className="flex items-center gap-1.5 min-w-0">
           {sequenceIndex !== undefined && (
-            <span className="font-mono text-[10px] text-ink-muted/60 font-medium">
+            <span className="font-mono text-[10px] text-ink-muted/50 font-medium">
               {String(sequenceIndex).padStart(2, '0')}
             </span>
           )}
-          <span className="font-mono text-xs font-semibold text-ink group-hover:text-ink">
+          <span className="font-mono font-medium text-ink-muted group-hover:text-ink transition-colors">
             {machine.id}
           </span>
         </div>
 
-        {/* Status / Sensor Pill */}
+        {/* Quiet, borderless badges - only abnormal states shout */}
         {isOffline ? (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-surface-2 text-ink-muted border border-line/30">
+          <span className="inline-flex items-center gap-1 text-[10px] text-ink-muted font-medium">
             <WifiOff className="w-2.5 h-2.5" />
             <span>Offline</span>
           </span>
         ) : isMaintenance ? (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-medium/15 text-medium border border-medium/30">
+          <span className="inline-flex items-center gap-1 text-[10px] text-medium font-semibold">
             <Wrench className="w-2.5 h-2.5 animate-pulse" />
             <span>Maint</span>
           </span>
         ) : urgency ? (
           <span
-            className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold ${badgeStyle}`}
+            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+              isP1
+                ? 'bg-critical/20 text-critical'
+                : isP2
+                ? 'bg-high/20 text-high'
+                : 'bg-medium/20 text-medium'
+            }`}
           >
             <AlertTriangle className="w-2.5 h-2.5" />
             <span>{urgency}</span>
           </span>
         ) : machine.has_sensors ? (
           <span
-            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-            title="IoT Continuous Telemetry (Vibration & Temperature)"
+            className="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-medium"
+            title="IoT Continuous Telemetry"
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span>IoT Sensor</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span>IoT</span>
           </span>
         ) : (
           <span
-            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-surface-2 text-ink-muted border border-line/30"
-            title="Legacy Asset without sensors (technician shift manual inspections)"
+            className="inline-flex items-center gap-1 text-[10px] text-ink-muted/60 font-medium"
+            title="Legacy Asset (Manual shift inspection)"
           >
-            <ClipboardCheck className="w-2.5 h-2.5 text-ink-muted/70" />
+            <ClipboardCheck className="w-2.5 h-2.5" />
             <span>Legacy</span>
           </span>
         )}
       </div>
 
-      {/* 2. Middle: Full Machine Name */}
+      {/* 2. Machine Name & Plain-English issue if abnormal */}
       <div className="my-auto py-0.5">
         <p
-          className="text-xs font-medium text-ink truncate leading-tight"
+          className={`text-xs font-medium truncate leading-tight ${
+            isAbnormal ? 'text-ink font-semibold' : 'text-ink'
+          }`}
           title={machine.name}
         >
           {machine.name}
         </p>
+        {activeAlert?.failure_mode && (
+          <p className="text-[10px] text-critical truncate mt-0.5 font-medium capitalize">
+            {activeAlert.failure_mode.replace(/_/g, ' ')}
+          </p>
+        )}
       </div>
 
-      {/* 3. Bottom Row: Telemetry & Sparkline (Sensor) OR Inspection Cadence (Legacy) */}
-      <div className="flex items-center justify-between pt-1.5 border-t border-line/20 text-[11px] leading-none">
+      {/* 3. Bottom Row: Telemetry (Sensor) OR Inspection Cadence (Legacy) - NO INNER DIVIDER LINE */}
+      <div className="flex items-center justify-between text-[11px] text-ink-muted leading-none">
         {machine.has_sensors ? (
           isOffline ? (
-            <span className="text-[10px] text-ink-muted italic">Sensor dropout</span>
+            <span className="text-[10px] italic opacity-60">Sensor dropout</span>
           ) : (
             <>
               <div className="flex items-baseline gap-1 font-mono">
                 <span
-                  className={`text-xs font-semibold ${
-                    isP1 ? 'text-critical' : isP2 ? 'text-high' : 'text-ink'
+                  className={`text-xs ${
+                    isP1
+                      ? 'text-critical font-bold'
+                      : isP2
+                      ? 'text-high font-bold'
+                      : 'text-ink font-medium'
                   }`}
                 >
-                  {(mounted ? telemetry.vibration_mm_s : (machine.vibration_baseline || 1.8)).toFixed(2)}
+                  {currentVib.toFixed(2)}
                 </span>
-                <span className="text-[10px] font-normal text-ink-muted">mm/s</span>
+                <span className="text-[10px] opacity-60">mm/s</span>
               </div>
 
-              {/* Sparkline */}
               {mounted && pathD && (
-                <svg width={width} height={height} className={sparklineColor}>
+                <svg
+                  width={width}
+                  height={height}
+                  className={
+                    isP1
+                      ? 'text-critical stroke-critical'
+                      : isP2
+                      ? 'text-high stroke-high'
+                      : 'text-ink-muted/30 stroke-current'
+                  }
+                >
                   <path
                     d={pathD}
                     fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
+                    strokeWidth="1.25"
                     strokeLinecap="round"
                   />
                 </svg>
@@ -208,16 +227,11 @@ export function MachineTile({ machine, activeAlert, sequenceIndex }: MachineTile
             </>
           )
         ) : (
-          /* Legacy Machine (no sensors) */
-          <>
-            <span className="font-mono text-[10px] text-ink-muted">
-              {machine.strategy} · {machine.pm_interval_days}d PM
-            </span>
-            <span className="text-[10px] text-ink-muted/70 flex items-center gap-1">
-              <Eye className="w-2.5 h-2.5" />
-              <span>Shift check</span>
-            </span>
-          </>
+          /* Legacy Machine */
+          <div className="flex items-center justify-between w-full text-[10px] text-ink-muted/70">
+            <span>{machine.strategy} · {machine.pm_interval_days}d</span>
+            <span>Manual check</span>
+          </div>
         )}
       </div>
     </div>
