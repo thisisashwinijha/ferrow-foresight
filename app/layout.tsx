@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { IBM_Plex_Sans } from 'next/font/google';
+import '@fontsource/ibm-plex-sans/400.css';
+import '@fontsource/ibm-plex-sans/500.css';
+import '@fontsource/ibm-plex-sans/600.css';
 import './globals.css';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { PlantProvider } from '@/components/PlantContext';
@@ -8,13 +10,6 @@ import { ToastProvider } from '@/components/ToastContext';
 import { AppShell } from '@/components/AppShell';
 import { getPlants } from '@/lib/data/plants';
 import { getAllMachines } from '@/lib/data/machines';
-
-const ibmPlexSans = IBM_Plex_Sans({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-ibm-plex-sans',
-  display: 'swap',
-});
 
 export const metadata: Metadata = {
   title: 'Ferrow Foresight | Maintenance Operating System',
@@ -33,10 +28,9 @@ export default function RootLayout({
     <html
       lang="en"
       data-theme="light"
-      className={ibmPlexSans.variable}
       suppressHydrationWarning
     >
-      <body className="bg-canvas text-ink antialiased selection:bg-ink/10 selection:text-ink">
+      <body className="bg-canvas text-ink antialiased selection:bg-ink/10 selection:text-ink font-sans">
         <ThemeProvider>
           <Suspense fallback={null}>
             <PlantProvider>

@@ -27,7 +27,7 @@ const config: Config = {
         agent: "var(--agent)",
       },
       fontFamily: {
-        sans: ["var(--font-ibm-plex-sans)", "system-ui", "-apple-system", "sans-serif"],
+        sans: ["'IBM Plex Sans'", "system-ui", "-apple-system", "sans-serif"],
         mono: ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
       },
       borderRadius: {

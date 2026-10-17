@@ -62,7 +62,7 @@ Context selection (top bar, persistent across pages):
 
 ## 4. Stack (do not change)
 
-- Next.js (App Router) + TypeScript, Tailwind CSS, shadcn/ui, Recharts, lucide-react icons, next/font (Google Fonts)
+- Next.js (App Router) + TypeScript, Tailwind CSS, shadcn/ui, Recharts, lucide-react icons, self-hosted fonts via @fontsource/ibm-plex-sans (weights 400, 500, 600) with system font fallbacks
 - Data: Supabase Postgres (schema in supabase/schema.sql). Until Supabase is wired, read from data/seed_data.json through the data layer in lib/data. Pages must never import the JSON directly.
 - Agent: Make.com scenario called via webhook from a server route. LLM is Gemini (free tier) inside Make. Prompts live in /prompts.
 - Hosting: Vercel. Branch dev = preview, main = production.
@@ -137,7 +137,7 @@ Rules:
 - Works in current Chrome, Edge, Safari and Firefox on macOS, Windows, Android and iOS.
 - Responsive at 375px (phone), 768px (tablet), 1280px and 1920px (desktop and control-room screen). /capture is designed phone-first; other pages collapse to a single column with a bottom or hamburger nav on phones.
 - Voice notes use the browser Web Speech API where supported (Chrome, Edge, Safari). Where not supported (Firefox), hide the mic button and keep typing. Never break the page.
-- No OS-specific code, paths or fonts. Fonts load through next/font with system fallbacks.
+- No OS-specific code, paths or fonts. Self-hosted fonts load through @fontsource with system fallbacks.
 
 ## 10. Domain rules the UI must respect
 

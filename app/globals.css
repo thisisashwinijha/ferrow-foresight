@@ -53,7 +53,7 @@
 body {
   background-color: var(--canvas);
   color: var(--ink);
-  font-family: var(--font-ibm-plex-sans), system-ui, -apple-system, sans-serif;
+  font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
   font-feature-settings: "tnum" 1;
   font-variant-numeric: tabular-nums;
   margin: 0;
