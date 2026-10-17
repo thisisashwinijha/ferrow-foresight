@@ -107,21 +107,14 @@ export function ControlRoomView() {
       {/* 4. Main Body: Line Mimic (Left) & Compact Recent Activity (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left: Clean Line Mimic */}
-        <div className="lg:col-span-8 space-y-3">
-          <div className="flex items-center justify-between">
+        <div className="lg:col-span-8 space-y-4">
+          <div>
             <h2 className="text-base font-semibold text-ink tracking-tight">
-              Line mimic
+              Line mimic & machine topology
             </h2>
-            <div className="text-xs text-ink-muted flex items-center gap-3">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-surface-2 border border-line/40" />
-                <span>Normal</span>
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-critical" />
-                <span>Attention</span>
-              </span>
-            </div>
+            <p className="text-xs text-ink-muted mt-0.5">
+              Manufacturing sequence across continuous IoT sensor telemetry and legacy manual inspection assets
+            </p>
           </div>
 
           <LineMimic

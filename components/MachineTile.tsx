@@ -2,7 +2,14 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { Wrench, Hand } from 'lucide-react';
+import {
+  Activity,
+  ClipboardCheck,
+  Wrench,
+  AlertTriangle,
+  Eye,
+  WifiOff,
+} from 'lucide-react';
 import { Machine, Alert } from '@/lib/types';
 import { useMachineTelemetry } from '@/lib/simulator';
 import { usePlantContext } from './PlantContext';
@@ -10,9 +17,10 @@ import { usePlantContext } from './PlantContext';
 interface MachineTileProps {
   machine: Machine;
   activeAlert?: Alert;
+  sequenceIndex?: number;
 }
 
-export function MachineTile({ machine, activeAlert }: MachineTileProps) {
+export function MachineTile({ machine, activeAlert, sequenceIndex }: MachineTileProps) {
   const router = useRouter();
   const { plantId, lineId } = usePlantContext();
 
@@ -22,6 +30,12 @@ export function MachineTile({ machine, activeAlert }: MachineTileProps) {
     machine.temperature_baseline || 50,
     machine.has_sensors
   );
+
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleClick = () => {
     router.push(`/machines/${machine.id}?plant=${plantId}&line=${lineId}`);
@@ -41,104 +55,168 @@ export function MachineTile({ machine, activeAlert }: MachineTileProps) {
   const isOffline = machine.id === 'P07-M18' || machine.status === 'offline';
   const isMaintenance = machine.status === 'maintenance';
 
-  const isAbnormal = hasUrgentAlert || isDegrading || isOffline || isMaintenance;
-
-  // 1. HEALTHY MACHINES: Render as compact neutral chip (ID and short name only)
-  if (!isAbnormal) {
-    return (
-      <button
-        onClick={handleClick}
-        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-chip bg-surface hover:bg-surface-2 text-ink text-xs transition-colors cursor-pointer select-none group"
-      >
-        <span className="font-mono text-ink-muted text-[11px] font-medium">{machine.id}</span>
-        <span className="truncate max-w-[130px]">{machine.name}</span>
-        {!machine.has_sensors && (
-          <span title="Manual sensory observation (legacy asset)">
-            <Hand className="w-3 h-3 text-ink-muted/50" />
-          </span>
-        )}
-      </button>
-    );
-  }
-
-  // 2. ABNORMAL MACHINES: Render as larger tiles with status colour, live value, and sparkline
-  const urgency = activeAlert?.urgency || (isDegrading ? 'P1' : 'P3');
+  const urgency = activeAlert?.urgency || (isDegrading ? 'P1' : null);
   const isP1 = urgency === 'P1';
   const isP2 = urgency === 'P2';
+  const isP3 = urgency === 'P3';
 
-  let tintStyle = 'bg-medium/10 text-medium border-medium/30';
-  let badgeStyle = 'bg-medium/20 text-medium';
+  // Determine container styling based on abnormal status vs calm normal
+  let cardStyle =
+    'bg-surface hover:bg-surface-2 border-line/40 hover:border-line/70';
+  let badgeStyle = '';
 
   if (isP1) {
-    tintStyle = 'bg-critical/10 text-critical border-critical/30';
-    badgeStyle = 'bg-critical/20 text-critical';
+    cardStyle =
+      'bg-critical/5 border-critical/40 hover:bg-critical/10 hover:border-critical/60';
+    badgeStyle = 'bg-critical/15 text-critical border border-critical/30';
   } else if (isP2) {
-    tintStyle = 'bg-high/10 text-high border-high/30';
-    badgeStyle = 'bg-high/20 text-high';
+    cardStyle =
+      'bg-high/5 border-high/40 hover:bg-high/10 hover:border-high/60';
+    badgeStyle = 'bg-high/15 text-high border border-high/30';
+  } else if (isP3) {
+    cardStyle =
+      'bg-medium/5 border-medium/40 hover:bg-medium/10 hover:border-medium/60';
+    badgeStyle = 'bg-medium/15 text-medium border border-medium/30';
+  } else if (isMaintenance) {
+    cardStyle = 'bg-medium/5 border-medium/30 hover:bg-medium/10';
+    badgeStyle = 'bg-medium/15 text-medium border border-medium/30';
   } else if (isOffline) {
-    tintStyle = 'bg-surface-2 text-ink-muted border-line/40';
-    badgeStyle = 'bg-surface text-ink-muted';
+    cardStyle = 'bg-surface-2/40 border-dashed border-line/60 opacity-80';
+    badgeStyle = 'bg-surface-2 text-ink-muted border border-line/40';
   }
 
-  // Generate SVG mini sparkline path from simulator points
-  const points = telemetry.sparkline || [];
+  // Sparkline calculation for sensor machines
+  const points = telemetry?.sparkline || [];
   const minVal = Math.min(...points, 0);
   const maxVal = Math.max(...points, 8);
   const range = maxVal - minVal || 1;
 
-  const width = 48;
-  const height = 18;
-  const pathD = points
-    .map((val, idx) => {
-      const x = (idx / (points.length - 1 || 1)) * width;
-      const y = height - ((val - minVal) / range) * (height - 4) - 2;
-      return `${idx === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`;
-    })
-    .join(' ');
+  const width = 42;
+  const height = 16;
+  const pathD =
+    points.length > 1
+      ? points
+          .map((val, idx) => {
+            const x = (idx / (points.length - 1)) * width;
+            const y = height - ((val - minVal) / range) * (height - 4) - 2;
+            return `${idx === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`;
+          })
+          .join(' ')
+      : '';
+
+  const sparklineColor = isP1
+    ? 'text-critical stroke-critical'
+    : isP2
+    ? 'text-high stroke-high'
+    : 'text-emerald-500/80 stroke-emerald-500/80';
 
   return (
     <div
       onClick={handleClick}
-      className={`relative w-44 p-2.5 rounded-card border ${tintStyle} cursor-pointer transition-all hover:scale-[1.02] shadow-xs select-none`}
+      className={`group relative p-2.5 rounded-card border ${cardStyle} cursor-pointer transition-all duration-150 hover:scale-[1.01] hover:shadow-xs flex flex-col justify-between h-[96px] select-none`}
     >
-      {/* Top: ID, Name, Badge */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5 font-medium text-xs">
-          <span className="font-mono font-bold text-ink">{machine.id}</span>
-          <span className="truncate max-w-[80px] text-ink">{machine.name}</span>
+      {/* 1. Top row: Sequence + Machine ID on left, Badge on right */}
+      <div className="flex items-center justify-between gap-1">
+        <div className="flex items-center gap-1.5 min-w-0">
+          {sequenceIndex !== undefined && (
+            <span className="font-mono text-[10px] text-ink-muted/60 font-medium">
+              {String(sequenceIndex).padStart(2, '0')}
+            </span>
+          )}
+          <span className="font-mono text-xs font-semibold text-ink group-hover:text-ink">
+            {machine.id}
+          </span>
         </div>
 
-        <span className={`px-1.5 py-0.2 rounded-chip text-[10px] font-semibold ${badgeStyle}`}>
-          {isOffline ? 'Offline' : isMaintenance ? 'Maint' : urgency}
-        </span>
+        {/* Status / Sensor Pill */}
+        {isOffline ? (
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-surface-2 text-ink-muted border border-line/30">
+            <WifiOff className="w-2.5 h-2.5" />
+            <span>Offline</span>
+          </span>
+        ) : isMaintenance ? (
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-medium/15 text-medium border border-medium/30">
+            <Wrench className="w-2.5 h-2.5 animate-pulse" />
+            <span>Maint</span>
+          </span>
+        ) : urgency ? (
+          <span
+            className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold ${badgeStyle}`}
+          >
+            <AlertTriangle className="w-2.5 h-2.5" />
+            <span>{urgency}</span>
+          </span>
+        ) : machine.has_sensors ? (
+          <span
+            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+            title="IoT Continuous Telemetry (Vibration & Temperature)"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>IoT Sensor</span>
+          </span>
+        ) : (
+          <span
+            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-surface-2 text-ink-muted border border-line/30"
+            title="Legacy Asset without sensors (technician shift manual inspections)"
+          >
+            <ClipboardCheck className="w-2.5 h-2.5 text-ink-muted/70" />
+            <span>Legacy</span>
+          </span>
+        )}
       </div>
 
-      {/* Bottom: Live Telemetry & Micro Sparkline */}
-      <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-current/15">
-        {isOffline ? (
-          <span className="text-[11px] text-ink-muted italic">Sensor dropout</span>
-        ) : isMaintenance ? (
-          <div className="flex items-center gap-1 text-[11px]">
-            <Wrench className="w-3 h-3 text-medium animate-pulse" />
-            <span className="text-ink">Maintenance</span>
-          </div>
-        ) : (
-          <>
-            <div className="flex items-baseline gap-1 font-mono text-xs font-semibold">
-              <span>{telemetry.vibration_mm_s.toFixed(2)}</span>
-              <span className="text-[10px] font-normal opacity-70">mm/s</span>
-            </div>
+      {/* 2. Middle: Full Machine Name */}
+      <div className="my-auto py-0.5">
+        <p
+          className="text-xs font-medium text-ink truncate leading-tight"
+          title={machine.name}
+        >
+          {machine.name}
+        </p>
+      </div>
 
-            {/* Sparkline */}
-            <svg width={width} height={height} className="opacity-90">
-              <path
-                d={pathD}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            </svg>
+      {/* 3. Bottom Row: Telemetry & Sparkline (Sensor) OR Inspection Cadence (Legacy) */}
+      <div className="flex items-center justify-between pt-1.5 border-t border-line/20 text-[11px] leading-none">
+        {machine.has_sensors ? (
+          isOffline ? (
+            <span className="text-[10px] text-ink-muted italic">Sensor dropout</span>
+          ) : (
+            <>
+              <div className="flex items-baseline gap-1 font-mono">
+                <span
+                  className={`text-xs font-semibold ${
+                    isP1 ? 'text-critical' : isP2 ? 'text-high' : 'text-ink'
+                  }`}
+                >
+                  {(mounted ? telemetry.vibration_mm_s : (machine.vibration_baseline || 1.8)).toFixed(2)}
+                </span>
+                <span className="text-[10px] font-normal text-ink-muted">mm/s</span>
+              </div>
+
+              {/* Sparkline */}
+              {mounted && pathD && (
+                <svg width={width} height={height} className={sparklineColor}>
+                  <path
+                    d={pathD}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              )}
+            </>
+          )
+        ) : (
+          /* Legacy Machine (no sensors) */
+          <>
+            <span className="font-mono text-[10px] text-ink-muted">
+              {machine.strategy} · {machine.pm_interval_days}d PM
+            </span>
+            <span className="text-[10px] text-ink-muted/70 flex items-center gap-1">
+              <Eye className="w-2.5 h-2.5" />
+              <span>Shift check</span>
+            </span>
           </>
         )}
       </div>
