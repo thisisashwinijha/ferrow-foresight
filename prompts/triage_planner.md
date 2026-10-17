@@ -23,6 +23,7 @@ Decide in this order:
 10. SHADOW. If a Junior or Trainee is on the same shift, add them as shadow_technician for skill development.
 11. COST. est_failure_cost_usd = expected unplanned downtime hours x 18000 (criticality A ~8h, B ~4h, C ~1.5h) x probability. est_intervention_cost_usd = parts + labour.
 12. Return only JSON matching the schema. No markdown.
+13. The proposed window's shift must match the assigned technician's shift. If the best window is in a different shift, choose a window in the technician's shift, or keep the window and set assigned_technician to null with action_type "escalate". For P1 electrical faults with burning smell, also add an interim safety step to recommended_action (isolate the affected feeder if safe to do so, by a qualified person).
 
 ## Output schema (strict)
 
@@ -61,3 +62,4 @@ Decide in this order:
 | loto_required true for any repair / replace / electrical | forced true, LOTO checklist added |
 | spares stock re-checked from database | spares_blocked overwritten with database truth |
 | P1 on criticality A | always routed to Plant Head for approval |
+| Assigned technician's shift matches proposed window shift | assignment removed, needs_review |
