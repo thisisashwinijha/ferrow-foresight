@@ -33,7 +33,7 @@ async function run() {
       const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height } });
       const page = await context.newPage();
       try {
-        await page.goto(`${BASE_URL}${path}`, { waitUntil: 'domcontentloaded', timeout: 15000 });
+        await page.goto(`${BASE_URL}${path}`, { waitUntil: 'domcontentloaded', timeout: 30000 });
         await page.waitForTimeout(400);
 
         // Check if document or body horizontally overflows the viewport

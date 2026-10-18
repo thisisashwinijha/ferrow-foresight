@@ -63,14 +63,14 @@ const KANBAN_COLUMNS: Array<{
     statuses: ['loto_applied'],
     title: 'LOTO Applied',
     description: 'Energy isolated, permit issued',
-    color: 'border-amber-500/40 text-amber-600 dark:text-amber-400',
+    color: 'border-amber-500/40 text-amber-600',
   },
   {
     id: 'in_progress',
     statuses: ['in_progress'],
     title: 'In Progress',
     description: 'Active maintenance intervention',
-    color: 'border-blue-500/40 text-blue-600 dark:text-blue-400',
+    color: 'border-blue-500/40 text-blue-600',
   },
   {
     id: 'closed',

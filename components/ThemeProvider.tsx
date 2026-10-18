@@ -1,12 +1,12 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect } from 'react';
 
-type Theme = 'light' | 'dark';
+type Theme = 'light';
 
 interface ThemeContextType {
-  theme: Theme;
-  setTheme: (theme: Theme) => void;
+  theme: 'light';
+  setTheme: (theme: 'light') => void;
   toggleTheme: () => void;
 }
 
@@ -16,31 +16,21 @@ const ThemeContext = createContext<ThemeContextType>({
   toggleTheme: () => {},
 });
 
+/**
+ * Ferrow Foresight ships in Light Mode only.
+ * Always forces the light theme for every visitor (ignoring any system dark preference).
+ */
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setCustomTheme] = useState<Theme>('light');
-
-  const applyTheme = (nextTheme: Theme) => {
-    setCustomTheme(nextTheme);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('ferrow-theme', nextTheme);
-      document.documentElement.setAttribute('data-theme', nextTheme);
-    }
-  };
-
   useEffect(() => {
-    const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-    const urlTheme = params?.get('theme') as Theme | null;
-    const saved = typeof window !== 'undefined' ? (localStorage.getItem('ferrow-theme') as Theme | null) : null;
-    const initial = (urlTheme === 'light' || urlTheme === 'dark') ? urlTheme : (saved || 'light');
-    applyTheme(initial);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ferrow-theme', 'light');
+      document.documentElement.setAttribute('data-theme', 'light');
+      document.documentElement.classList.remove('dark');
+    }
   }, []);
 
-  const toggleTheme = () => {
-    applyTheme(theme === 'dark' ? 'light' : 'dark');
-  };
-
   return (
-    <ThemeContext.Provider value={{ theme, setTheme: applyTheme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme: 'light', setTheme: () => {}, toggleTheme: () => {} }}>
       {children}
     </ThemeContext.Provider>
   );

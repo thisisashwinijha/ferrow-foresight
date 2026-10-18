@@ -57,34 +57,6 @@
   --agent-border: #C7D7FE;
 }
 
-/* Night shift on [data-theme="dark"] */
-[data-theme="dark"] {
-  --canvas: #14171A;
-  --surface: #1C2024;
-  --surface-2: #24292E;
-  --ink: #EDF0F2;
-  --ink-muted: #8B949E;
-  --line: #2D3339;
-  --critical: #FDA29B;
-  --critical-bg: rgba(180, 35, 24, 0.25);
-  --critical-border: rgba(240, 68, 56, 0.35);
-  --warning: #FEC84B;
-  --warning-bg: rgba(147, 55, 13, 0.25);
-  --warning-border: rgba(247, 144, 9, 0.35);
-  --high: #FEC84B;
-  --high-bg: rgba(147, 55, 13, 0.25);
-  --high-border: rgba(247, 144, 9, 0.35);
-  --medium: #FEC84B;
-  --medium-bg: rgba(181, 71, 8, 0.25);
-  --medium-border: rgba(217, 179, 16, 0.35);
-  --ok: #6CE9A6;
-  --ok-bg: rgba(5, 96, 58, 0.25);
-  --ok-border: rgba(50, 213, 131, 0.35);
-  --agent: #A4BCFD;
-  --agent-bg: rgba(53, 56, 205, 0.25);
-  --agent-border: rgba(124, 155, 232, 0.35);
-}
-
 * {
   box-sizing: border-box;
 }

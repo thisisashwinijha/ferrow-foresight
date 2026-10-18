@@ -22,6 +22,15 @@ import {
 } from '@/lib/guardrails';
 import { formatFailureMode, formatObservationTag } from '@/lib/lifecycle';
 import { WorkflowFlowTracker } from './WorkflowFlowTracker';
+import {
+  getRequiredCertificationsForAlert,
+  getQualifyingTechniciansForShift,
+  getCrossShiftOptions,
+  assessTechnicianAssignment,
+  TODAY_REFERENCE_DATE,
+  QualifiedTechnicianResult,
+} from '@/lib/technicianAssignment';
+import { formatShiftShort, formatShiftFull, normalizeShiftId } from '@/lib/shifts';
 
 const TAXONOMY_FAILURE_MODES = [
   'bearing_wear',
@@ -144,58 +153,57 @@ export function AlertDetailView({
   const isAuthorizedRole = isPlantHead;
   const requiresPlantHeadApproval = isP1CritA && !isAuthorizedRole;
 
-  // Qualified, certified, and shift-matched technicians only (for Correct and re-check)
+  // Derive required certifications strictly based on failure mode, LOTO, and asset
+  const effectiveRequiredCerts = useMemo(() => {
+    return getRequiredCertificationsForAlert({
+      failureMode: selectedFailureModeOverride || alert.failure_mode,
+      lotoRequired: alert.loto_required,
+      machineId: alert.machine_id,
+      note: alert.evidence?.map((e) => e.text).join(' '),
+      existingRequiredCerts: alert.required_certifications,
+    });
+  }, [selectedFailureModeOverride, alert.failure_mode, alert.loto_required, alert.machine_id, alert.evidence, alert.required_certifications]);
+
+  const currentWindowShift = normalizeShiftId(alert.proposed_window?.shift || 'A');
+
+  // Qualified, certified, and shift-matched technicians only
   const eligibleTechnicians = useMemo(() => {
-    const requiredCerts = alert.required_certifications || [];
-    const windowShift = alert.proposed_window?.shift;
-
-    return technicians.filter((tech) => {
-      // 1. Shift match
-      if (windowShift && tech.shift.toUpperCase() !== windowShift.toUpperCase()) {
-        return false;
-      }
-      // 2. All required certs must be held and valid (not expired vs 2026-10-18)
-      const techCerts = certsByTech.get(tech.id) || [];
-      const validCerts = techCerts.filter(
-        (c) => new Date(c.valid_until) >= new Date('2026-10-18')
-      );
-      const hasAllRequired = requiredCerts.every((req) =>
-        validCerts.some((c) => c.certification.toLowerCase() === req.toLowerCase())
-      );
-      return hasAllRequired;
+    return getQualifyingTechniciansForShift({
+      plantId: plant?.id || machine.plant_id || 'P-07',
+      requiredCerts: effectiveRequiredCerts,
+      shift: currentWindowShift,
+      technicians,
+      certifications,
+      referenceDate: TODAY_REFERENCE_DATE,
     });
-  }, [technicians, certsByTech, alert.required_certifications, alert.proposed_window]);
+  }, [plant?.id, machine.plant_id, effectiveRequiredCerts, currentWindowShift, technicians, certifications]);
 
-  // Qualified technicians list for general override picker
-  const qualifiedTechnicians = useMemo(() => {
-    const requiredCerts = alert.required_certifications || [];
-    return technicians.map((tech) => {
-      const techCerts = certsByTech.get(tech.id) || [];
-      const validCerts = techCerts.filter(
-        (c) => new Date(c.valid_until) >= new Date('2026-10-18')
-      );
-      const hasAllRequired = requiredCerts.every((req) =>
-        validCerts.some((c) => c.certification.toLowerCase() === req.toLowerCase())
-      );
-      const shiftMatches =
-        !alert.proposed_window?.shift ||
-        tech.shift.toUpperCase() === alert.proposed_window.shift.toUpperCase();
-
-      return {
-        ...tech,
-        isQualified: hasAllRequired && shiftMatches,
-        missingCerts: requiredCerts.filter(
-          (req) => !validCerts.some((c) => c.certification.toLowerCase() === req.toLowerCase())
-        ),
-        shiftMatches,
-      };
+  // Cross-shift options when no technicians qualify on current shift
+  const crossShiftData = useMemo(() => {
+    return getCrossShiftOptions({
+      plantId: plant?.id || machine.plant_id || 'P-07',
+      requiredCerts: effectiveRequiredCerts,
+      currentShift: currentWindowShift,
+      technicians,
+      certifications,
+      referenceDate: TODAY_REFERENCE_DATE,
     });
-  }, [technicians, certsByTech, alert.required_certifications, alert.proposed_window]);
+  }, [plant?.id, machine.plant_id, effectiveRequiredCerts, currentWindowShift, technicians, certifications]);
 
-  // Assigned tech details
+  // Assigned tech details & assessment
   const activeTechId = selectedTechOverride || alert.assigned_technician;
   const activeTech = technicians.find((t) => t.id === activeTechId);
   const activeTechCerts = activeTechId ? certsByTech.get(activeTechId) || [] : [];
+  const techAssessment = useMemo(() => {
+    if (!activeTech) return null;
+    return assessTechnicianAssignment({
+      technician: activeTech,
+      requiredCerts: effectiveRequiredCerts,
+      windowShift: currentWindowShift,
+      allCerts: certifications,
+      referenceDate: TODAY_REFERENCE_DATE,
+    });
+  }, [activeTech, effectiveRequiredCerts, currentWindowShift, certifications]);
 
   // Shadow tech details
   const shadowTech = technicians.find((t) => t.id === alert.shadow_technician);
@@ -241,6 +249,39 @@ export function AlertDetailView({
       }
     } catch {
       showToast('Network error while saving correction', 'alert');
+    } finally {
+      setIsSavingCorrection(false);
+    }
+  };
+
+  // Handler: Assign technician from another shift (moves maintenance window to that shift)
+  const handleAssignFromOtherShift = async (techId: string, newShift: string) => {
+    setSelectedTechOverride(techId);
+    setIsSavingCorrection(true);
+    try {
+      const newWindow = alert.proposed_window
+        ? { ...alert.proposed_window, shift: newShift }
+        : { date: '2026-10-19', shift: newShift, window_type: 'planned_shutdown', production_loss_units: 0 };
+
+      const res = await fetch(`/api/alerts/${alert.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          assigned_technician: techId,
+          proposed_window: newWindow,
+          status: 'pending',
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setAlert(data.alert);
+        showToast(`Assigned technician and moved window to ${formatShiftFull(newShift)}`, 'success');
+        router.refresh();
+      } else {
+        showToast(data.error || 'Failed to update assignment', 'alert');
+      }
+    } catch {
+      showToast('Network error while assigning technician', 'alert');
     } finally {
       setIsSavingCorrection(false);
     }
@@ -388,7 +429,7 @@ export function AlertDetailView({
   const hasGuardrailNeedsReview = !guardrailOutcome.pass && alert.status !== 'approved';
 
   return (
-    <div className="space-y-6 max-w-[1400px] mx-auto pb-16">
+    <div className="space-y-6 max-w-[1600px] mx-auto px-4 sm:px-6 pb-16">
       {/* 1. Breadcrumbs */}
       <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-ink-muted">
         <Link
@@ -572,7 +613,7 @@ export function AlertDetailView({
                   <>Work order <strong>{createdWorkOrder.id}</strong> completed & closed. Machine restored to nominal baseline.</>
                 ) : (
                   <>
-                    Work order <strong>{createdWorkOrder.id}</strong> scheduled for {createdWorkOrder.scheduled_window?.date} (Shift {createdWorkOrder.scheduled_window?.shift}).
+                    Work order <strong>{createdWorkOrder.id}</strong> scheduled for {createdWorkOrder.scheduled_window?.date} ({formatShiftFull(createdWorkOrder.scheduled_window?.shift || 'A')}).
                     {createdWorkOrder.loto_permit_no ? ` LOTO permit: ${createdWorkOrder.loto_permit_no}.` : ' LOTO pending.'}
                   </>
                 )}
@@ -607,9 +648,9 @@ export function AlertDetailView({
       </div>
 
       {/* 3. Main Two-Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* LEFT COLUMN: Evidence, Reasoning, Recommended Action, Spares, Cost (2 Cols) */}
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* LEFT COLUMN: Evidence, Reasoning, Recommended Action, Spares, Cost (7 Cols) */}
+        <div className="lg:col-span-7 space-y-6">
           {/* Reasoning & Recommended Action */}
           <div className="bg-surface rounded-card p-6 border border-line/30 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
@@ -827,8 +868,8 @@ export function AlertDetailView({
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Guardrails, Technician Assignment, Window & Actions (1 Col) */}
-        <div className="space-y-6">
+        {/* RIGHT COLUMN: Guardrails, Technician Assignment, Window & Actions (5 Cols) */}
+        <div className="lg:col-span-5 space-y-6">
           {/* Action Approval Card */}
           {isPending && (
             <div className="bg-surface rounded-card p-6 border border-line/30 shadow-xs space-y-4">
@@ -1037,23 +1078,41 @@ export function AlertDetailView({
               <h2 className="text-sm font-semibold text-ink flex items-center gap-2">
                 <UserCheck className="w-4 h-4 text-ink-muted" /> Technician Assignment
               </h2>
-              <span className="text-[11px] text-ink-muted">
-                Proposed Shift: {alert.proposed_window?.shift || 'A'}
+              <span className="text-[11px] text-ink-muted font-medium">
+                Proposed Shift: {formatShiftShort(alert.proposed_window?.shift || 'A')}
               </span>
             </div>
 
             {/* Active Technician Details */}
             {activeTech ? (
-              <div className="p-3.5 rounded-btn bg-surface-2/50 border border-line/20 space-y-2">
+              <div className="p-3.5 rounded-btn bg-surface-2/50 border border-line/20 space-y-2.5">
                 <div className="flex items-center justify-between text-xs">
                   <div>
                     <span className="font-semibold text-ink">{activeTech.name}</span>
                     <span className="font-mono text-[11px] text-ink-muted ml-1.5">({activeTech.id})</span>
                   </div>
                   <span className="px-2 py-0.5 rounded-chip text-[11px] bg-surface font-medium text-ink">
-                    Shift {activeTech.shift} · {activeTech.role}
+                    {formatShiftShort(activeTech.shift)} · {activeTech.role}
                   </span>
                 </div>
+
+                {/* Validation status badge / error */}
+                {techAssessment && !techAssessment.qualified && (
+                  <div className="p-2.5 rounded-btn bg-danger/10 border border-danger/30 text-xs text-danger font-medium flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{techAssessment.reason}</span>
+                  </div>
+                )}
+
+                {/* Expiring Soon Warnings */}
+                {techAssessment && techAssessment.expiringSoonWarnings.length > 0 && (
+                  <div className="p-2 rounded-btn bg-warning/10 border border-warning/30 text-xs text-warning flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>
+                      Warning: {techAssessment.expiringSoonWarnings.map((w) => `${w.name} expires ${w.validUntil}`).join(', ')}
+                    </span>
+                  </div>
+                )}
 
                 {/* Certifications with Expiration status */}
                 <div className="space-y-1 pt-1">
@@ -1093,7 +1152,7 @@ export function AlertDetailView({
                   Shadow trainee (skill development)
                 </span>
                 <p className="text-ink font-medium">
-                  {shadowTech.name} <span className="font-mono text-ink-muted">({shadowTech.id})</span> · Shift {shadowTech.shift}
+                  {shadowTech.name} <span className="font-mono text-ink-muted">({shadowTech.id})</span> · {formatShiftShort(shadowTech.shift)}
                 </p>
               </div>
             )}
@@ -1105,7 +1164,7 @@ export function AlertDetailView({
                   <span className="text-[11px] font-semibold text-ink flex items-center gap-1.5">
                     <Wrench className="w-3.5 h-3.5 text-ink-muted" /> Correct and re-check
                   </span>
-                  <span className="text-[10px] text-ink-muted">Planner override</span>
+                  <span className="text-[10px] text-ink-muted font-medium">Planner override</span>
                 </div>
 
                 {/* Failure Mode Dropdown (Taxonomy only) */}
@@ -1116,10 +1175,10 @@ export function AlertDetailView({
                   <select
                     value={selectedFailureModeOverride}
                     onChange={(e) => setSelectedFailureModeOverride(e.target.value)}
-                    className="w-full bg-surface-2/60 border border-line/30 rounded-btn p-2 text-xs text-ink focus:outline-hidden"
+                    className="w-full bg-surface text-ink border border-line rounded-btn p-2 text-xs font-medium focus:outline-hidden focus:border-ink"
                   >
                     {TAXONOMY_FAILURE_MODES.map((mode) => (
-                      <option key={mode} value={mode}>
+                      <option key={mode} value={mode} className="bg-surface text-ink py-1">
                         {formatFailureMode(mode)} ({mode})
                       </option>
                     ))}
@@ -1130,32 +1189,68 @@ export function AlertDetailView({
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <label className="text-[10px] font-medium text-ink-muted block">
-                      Technician (qualified, certified, shift-matched only)
+                      Technician (qualified on shift only)
                     </label>
-                    <span className="text-[10px] text-ink-muted">
-                      Shift {alert.proposed_window?.shift || 'A'}
+                    <span className="text-[10px] text-ink-muted font-medium">
+                      {formatShiftShort(currentWindowShift)}
                     </span>
                   </div>
                   {eligibleTechnicians.length > 0 ? (
                     <select
                       value={selectedTechOverride}
                       onChange={(e) => setSelectedTechOverride(e.target.value)}
-                      className="w-full bg-surface-2/60 border border-line/30 rounded-btn p-2 text-xs text-ink focus:outline-hidden"
+                      className="w-full bg-surface text-ink border border-line rounded-btn p-2 text-xs font-medium focus:outline-hidden focus:border-ink"
                     >
-                      <option value="">Select qualified technician...</option>
+                      <option value="" className="bg-surface text-ink">Select qualified technician...</option>
                       {eligibleTechnicians.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.name} ({t.id}) — Shift {t.shift} · {t.role}
+                        <option key={t.technician.id} value={t.technician.id} className="bg-surface text-ink py-1">
+                          {t.technician.name} ({t.technician.id}) — {formatShiftShort(t.technician.shift)} · {t.technician.role}
+                          {t.expiringSoonWarnings.length > 0
+                            ? ` (⚠️ ${t.expiringSoonWarnings.map((w) => `${w.name} expires ${w.validUntil}`).join(', ')})`
+                            : ''}
                         </option>
                       ))}
                     </select>
                   ) : (
-                    <div className="p-2 rounded-btn bg-warning/10 border border-warning/30 text-xs text-warning">
-                      No technician on Shift {alert.proposed_window?.shift || 'A'} holds all required valid certifications ({alert.required_certifications?.join(', ')}).
+                    <div className="p-3 rounded-btn bg-warning/10 border border-warning/30 text-xs text-ink space-y-2.5">
+                      <div className="flex items-start gap-2 text-warning font-semibold">
+                        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <span>{crossShiftData.onShiftReason}</span>
+                      </div>
+                      {crossShiftData.otherShiftQualifiers.length > 0 ? (
+                        <div className="space-y-2 pt-1 border-t border-warning/20">
+                          <span className="text-[11px] text-ink-muted block font-medium">
+                            Assign from another shift (moves maintenance window to that shift):
+                          </span>
+                          <div className="flex flex-col gap-1.5">
+                            {crossShiftData.otherShiftQualifiers.flatMap((group) =>
+                              group.technicians.map((t) => (
+                                <button
+                                  key={t.technician.id}
+                                  type="button"
+                                  onClick={() => handleAssignFromOtherShift(t.technician.id, group.shift)}
+                                  className="w-full text-left p-2 rounded-btn bg-surface border border-line hover:border-ink text-xs font-medium text-ink flex items-center justify-between transition-colors shadow-2xs"
+                                >
+                                  <span>
+                                    {t.technician.name} ({t.technician.id}) · {t.technician.role}
+                                  </span>
+                                  <span className="px-2 py-0.5 rounded-chip bg-surface-2 text-[10px] font-semibold text-ink">
+                                    Assign & Move to {formatShiftShort(group.shift)} →
+                                  </span>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-ink-muted">
+                          No technicians across any shift currently meet the required certifications.
+                        </p>
+                      )}
                     </div>
                   )}
                   <span className="text-[10px] text-ink-muted block">
-                    Only technicians who hold all required valid certifications and match the proposed window shift are listed.
+                    All qualifying technicians on {formatShiftShort(currentWindowShift)} are listed. Expiring certifications are shown with a warning.
                   </span>
                 </div>
 
@@ -1185,13 +1280,13 @@ export function AlertDetailView({
             </h2>
 
             {alert.proposed_window ? (
-              <div className="p-3.5 rounded-btn bg-surface-2/40 border border-line/20 space-y-2 text-xs">
+              <div className="p-3.5 rounded-btn bg-surface-2/40 border border-line/20 space-y-2.5 text-xs">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-ink">
                     {alert.proposed_window.date}
                   </span>
                   <span className="px-2 py-0.5 rounded-chip bg-surface font-medium text-ink">
-                    Shift {alert.proposed_window.shift}
+                    {formatShiftFull(alert.proposed_window.shift)}
                   </span>
                 </div>
                 <p className="text-ink-muted">
@@ -1200,6 +1295,15 @@ export function AlertDetailView({
                 <p className="text-ink-muted">
                   Production loss: <span className="text-ink font-semibold">{alert.proposed_window.production_loss_units ?? 0} units</span>
                 </p>
+                <div className="pt-2 border-t border-line/20">
+                  <Link
+                    href={`/production?plant=${plant?.id || 'P-07'}`}
+                    className="text-xs text-ink-muted hover:text-ink font-medium inline-flex items-center gap-1 hover:underline"
+                  >
+                    <span>Pick another window in Production timeline</span>
+                    <span>→</span>
+                  </Link>
+                </div>
               </div>
             ) : (
               <p className="text-xs text-ink-muted">No scheduled window specified.</p>

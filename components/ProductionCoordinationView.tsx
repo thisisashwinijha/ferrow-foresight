@@ -11,6 +11,7 @@ import {
   WorkOrder,
   WindowType,
 } from '@/lib/types';
+import { formatShiftFull, formatShiftShort } from '@/lib/shifts';
 import { usePlantContext } from './PlantContext';
 import { useToast } from './ToastContext';
 import {
@@ -203,23 +204,23 @@ export function ProductionCoordinationView({
     switch (type) {
       case 'planned_shutdown':
         return {
-          bg: 'bg-purple-500/10 dark:bg-purple-500/20',
+          bg: 'bg-purple-500/10',
           border: 'border-purple-500/30',
-          text: 'text-purple-700 dark:text-purple-300 font-medium',
+          text: 'text-purple-700 font-medium',
           label: 'Planned shutdown',
         };
       case 'changeover':
         return {
-          bg: 'bg-blue-500/10 dark:bg-blue-500/20',
+          bg: 'bg-blue-500/10',
           border: 'border-blue-500/30',
-          text: 'text-blue-700 dark:text-blue-300 font-medium',
+          text: 'text-blue-700 font-medium',
           label: 'Changeover',
         };
       case 'low_load':
         return {
-          bg: 'bg-amber-500/10 dark:bg-amber-500/20',
+          bg: 'bg-amber-500/10',
           border: 'border-amber-500/30',
-          text: 'text-amber-800 dark:text-amber-300 font-medium',
+          text: 'text-amber-800 font-medium',
           label: 'Low load',
         };
       case 'run':
@@ -261,15 +262,15 @@ export function ProductionCoordinationView({
             <span className="w-2 h-2 rounded-full bg-ink-muted" />
             <span>Run</span>
           </div>
-          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-chip bg-blue-500/10 border border-blue-500/30 text-blue-700 dark:text-blue-300">
+          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-chip bg-blue-500/10 border border-blue-500/30 text-blue-700">
             <span className="w-2 h-2 rounded-full bg-blue-600" />
             <span>Changeover</span>
           </div>
-          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-chip bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300">
+          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-chip bg-amber-500/10 border border-amber-500/30 text-amber-800">
             <span className="w-2 h-2 rounded-full bg-amber-600" />
             <span>Low load</span>
           </div>
-          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-chip bg-purple-500/10 border border-purple-500/30 text-purple-700 dark:text-purple-300">
+          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-chip bg-purple-500/10 border border-purple-500/30 text-purple-700">
             <span className="w-2 h-2 rounded-full bg-purple-600" />
             <span>Planned shutdown</span>
           </div>
@@ -509,7 +510,7 @@ export function ProductionCoordinationView({
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold text-ink">
-                    Line {selectedCell.lineId} · Shift {selectedCell.shift}
+                    Line {selectedCell.lineId} · {formatShiftFull(selectedCell.shift)}
                   </span>
                   <span className="px-2 py-0.5 rounded-chip text-[11px] font-medium bg-surface-2 text-ink">
                     {selectedCell.date}

@@ -90,21 +90,23 @@ scripts/             eval script
 
 Inspired by modern operational tooling (Linear, Vercel dashboard) and ISA-101 high-performance HMI practice: neutral greys and subtle surface tints for normal state, color reserved strictly for abnormal states, so problems immediately draw focus.
 
-Tokens (CSS variables on :root for Day shift default, [data-theme="dark"] for Night shift):
+The app ships in light mode only (Day shift). Night mode is a future roadmap item.
 
-| Token | Day shift (default) | Night shift |
-|---|---|---|
-| --canvas | #F7F8F9 | #14171A |
-| --surface | #FFFFFF | #1C2024 |
-| --surface-2 | #F0F2F4 | #24292E |
-| --ink | #181B1E | #EDF0F2 |
-| --ink-muted | #656F7D | #8B949E |
-| --line | #E2E5E8 | #2D3339 |
-| --critical (P1) | #C4161C | #E5484D |
-| --high (P2) | #D9711C | #F0883E |
-| --medium (P3 / watch) | #B89600 | #D9B310 |
-| --ok (closed, confirmed) | #2F7A4E | #4CAF78 |
-| --agent (AI suggestions) | #3A5DAE | #7C9BE8 |
+Tokens (CSS variables on :root for light mode):
+
+| Token | Light mode (Default & Active) |
+|---|---|
+| --canvas | #F5F6F8 |
+| --surface | #FFFFFF |
+| --surface-2 | #F8F9FA |
+| --ink | #1E252B |
+| --ink-muted | #4A5560 |
+| --line | #E3E6EA |
+| --critical (P1) | #B42318 (bg: #FEE4E2) |
+| --high (P2) | #93370D (bg: #FEF0C7) |
+| --medium (P3 / watch) | #93370D (bg: #FEF0C7) |
+| --ok (closed, confirmed) | #05603A (bg: #D1FADF) |
+| --agent (AI suggestions) | #3538CD (bg: #E0EAFF) |
 
 Rules:
 - Surfaces: remove heavy borders. Separate sections with generous spacing and subtle surface tints. Cards radius 12px, buttons and chips 8px. Avoid unnecessary inner divider lines.
@@ -113,7 +115,7 @@ Rules:
 - Colour use: alarm colors only on things that need attention. The --agent color only as a small "AI" badge or marker, not heavy borders everywhere.
 - Spacing: generous. Page padding at least 32px on desktop. Fewer elements per screen to preserve calm and clarity.
 - Motion: 150 to 200ms ease transitions on hover, panels, drawers, and tabs. Respect prefers-reduced-motion.
-- Navigation: slim icon rail (64px) with tooltips, expandable on toggle or hover. Top bar: plant switcher on left, command search center (Cmd+K), role, demo pill, and theme toggle right. Keep it light, without heavy boxes.
+- Navigation: slim icon rail (64px) with tooltips, expandable on toggle or hover. Top bar: plant switcher on left, command search center (Cmd+K), role, and demo pill right. Keep it light, without heavy boxes.
 - Detail views: open in a right-side sheet/drawer where sensible instead of new cluttered sections.
 - Accessibility: visible keyboard focus, color is never the only signal (always text or icon), respects prefers-reduced-motion.
 

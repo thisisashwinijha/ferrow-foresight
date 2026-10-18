@@ -1,4 +1,5 @@
 import { Alert, WorkOrder, Machine, KnowledgeLibrary, Certification } from './types';
+import { normalizeShiftId, formatShiftShort } from './shifts';
 
 export type WorkflowStage = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
@@ -458,11 +459,15 @@ export function validateWorkflowInvariants(context: {
       }
     }
 
-    if (context.proposedShift && context.technician.shift && context.proposedShift !== context.technician.shift) {
-      return {
-        valid: false,
-        error: `Invariant violation: Technician shift (${context.technician.shift}) does not match maintenance window shift (${context.proposedShift}).`,
-      };
+    if (context.proposedShift && context.technician.shift) {
+      const normProp = normalizeShiftId(context.proposedShift);
+      const normTech = normalizeShiftId(context.technician.shift);
+      if (normProp !== normTech) {
+        return {
+          valid: false,
+          error: `Invariant violation: Technician shift (${formatShiftShort(normTech)}) does not match maintenance window shift (${formatShiftShort(normProp)}).`,
+        };
+      }
     }
   }
 

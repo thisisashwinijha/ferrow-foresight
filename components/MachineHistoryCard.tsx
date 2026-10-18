@@ -410,13 +410,13 @@ export function MachineHistoryCard({
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-emerald-600 dark:text-emerald-400 font-medium">Good &lt;2.8</span>
+              <span className="text-emerald-700 font-medium">Good &lt;2.8</span>
               <span>·</span>
-              <span className="text-amber-600 dark:text-amber-400 font-medium">Watch 2.8–4.5</span>
+              <span className="text-amber-700 font-medium">Watch 2.8–4.5</span>
               <span>·</span>
-              <span className="text-orange-600 dark:text-orange-400 font-medium">Alarm 4.5–7.1</span>
+              <span className="text-orange-700 font-medium">Alarm 4.5–7.1</span>
               <span>·</span>
-              <span className="text-red-600 dark:text-red-400 font-medium">Critical &gt;7.1</span>
+              <span className="text-red-700 font-medium">Critical &gt;7.1</span>
             </div>
           </div>
         </div>

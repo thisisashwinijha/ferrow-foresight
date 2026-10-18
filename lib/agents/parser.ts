@@ -6,6 +6,11 @@ import {
   KnowledgeOutputSchema,
 } from './schemas';
 import { runAllGuardrails, checkPmDueDate } from '../guardrails';
+import {
+  getRequiredCertificationsForAlert,
+  getQualifyingTechniciansForShift,
+  getEligibleShadowTechnicians,
+} from '../technicianAssignment';
 import { AgentType } from './types';
 
 /**
@@ -252,6 +257,56 @@ export function parseAgentResponse(
               parsed.proposed_window.window_type = 'changeover';
             }
           }
+        }
+
+        // Derived canonical required certifications per prompts/triage_planner.md
+        const reqCerts = getRequiredCertificationsForAlert({
+          failureMode: parsed.failure_mode,
+          lotoRequired: Boolean(parsed.loto_required),
+          machineId: parsed.machine_id,
+          note: guardrailContext.triggerNote || '',
+          existingRequiredCerts: parsed.required_certifications,
+        });
+        parsed.required_certifications = reqCerts;
+
+        const windowShift = parsed.proposed_window?.shift || 'A';
+        const plantId = parsed.plant_id || guardrailContext.plantId || 'P-07';
+
+        const qualifiers = getQualifyingTechniciansForShift({
+          plantId,
+          requiredCerts: reqCerts,
+          shift: windowShift,
+        });
+
+        const isAssignedValid = qualifiers.some((q) => q.technician.id === parsed.assigned_technician);
+
+        if (!isAssignedValid) {
+          if (qualifiers.length > 0) {
+            // Correct to a qualifying technician on that shift
+            parsed.assigned_technician = qualifiers[0].technician.id;
+          } else {
+            // No qualifying technician on this shift: leave null, escalate, and set needs_review
+            parsed.assigned_technician = null;
+            parsed.action_type = 'escalate';
+          }
+        }
+
+        // Shadow technician: only Junior or Trainee on the same shift as assigned technician; otherwise null
+        const eligibleShadows = parsed.assigned_technician
+          ? getEligibleShadowTechnicians({
+              plantId,
+              assignedTechnicianShift: windowShift,
+              assignedTechnicianId: parsed.assigned_technician,
+            })
+          : [];
+
+        if (parsed.shadow_technician) {
+          const isShadowEligible = eligibleShadows.some((s) => s.id === parsed.shadow_technician);
+          if (!isShadowEligible) {
+            parsed.shadow_technician = eligibleShadows.length > 0 ? eligibleShadows[0].id : null;
+          }
+        } else if (eligibleShadows.length > 0) {
+          parsed.shadow_technician = eligibleShadows[0].id;
         }
       }
 

@@ -48,9 +48,9 @@ export function DatabaseBanner({
   return (
     <div
       role="status"
-      className="bg-amber-500/10 border-b border-amber-500/20 text-amber-900 dark:text-amber-200 text-xs px-4 py-1.5 flex items-center justify-center gap-2 transition-colors animate-fadeIn"
+      className="bg-amber-500/10 border-b border-amber-500/20 text-amber-900 text-xs px-4 py-1.5 flex items-center justify-center gap-2 transition-colors animate-fadeIn"
     >
-      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
       <span className="font-medium">
         Live database unavailable, showing snapshot
       </span>

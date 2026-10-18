@@ -3,8 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Sun,
-  Moon,
   RotateCcw,
   Search,
   ChevronDown,
@@ -13,7 +11,6 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { usePlantContext, UserRole } from './PlantContext';
-import { useTheme } from './ThemeProvider';
 import { useToast } from './ToastContext';
 import { LiveClock } from './LiveClock';
 import { PLANT_TIMEZONES } from '@/lib/data/plants';
@@ -47,7 +44,6 @@ export function TopBar({
 }: TopBarProps) {
   const router = useRouter();
   const { plantId, setPlantId, role, setRole, lineId } = usePlantContext();
-  const { theme, setTheme } = useTheme();
   const { showToast } = useToast();
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -284,7 +280,7 @@ export function TopBar({
           {dbStatus.live ? (
             <div
               title="Connected to Supabase live database"
-              className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-chip bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[11px] font-medium border border-emerald-500/20"
+              className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-chip bg-emerald-500/10 text-emerald-700 text-[11px] font-medium border border-emerald-500/20"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Data: Live
@@ -307,34 +303,6 @@ export function TopBar({
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
-
-          {/* Segmented Day / Night Shift Theme Switcher */}
-          <div className="flex items-center bg-surface-2/60 p-0.5 rounded-btn text-xs border border-line/20">
-            <button
-              onClick={() => setTheme('light')}
-              title="Day shift (Light mode)"
-              className={`flex items-center gap-1 px-2 py-0.5 rounded-chip transition-all ${
-                theme === 'light'
-                  ? 'bg-surface text-ink font-semibold shadow-xs'
-                  : 'text-ink-muted hover:text-ink'
-              }`}
-            >
-              <Sun className={`w-3.5 h-3.5 ${theme === 'light' ? 'text-amber-500' : ''}`} />
-              <span className="hidden sm:inline text-[11px]">Day</span>
-            </button>
-            <button
-              onClick={() => setTheme('dark')}
-              title="Night shift (Dark mode)"
-              className={`flex items-center gap-1 px-2 py-0.5 rounded-chip transition-all ${
-                theme === 'dark'
-                  ? 'bg-surface text-ink font-semibold shadow-xs'
-                  : 'text-ink-muted hover:text-ink'
-              }`}
-            >
-              <Moon className={`w-3.5 h-3.5 ${theme === 'dark' ? 'text-blue-400' : ''}`} />
-              <span className="hidden sm:inline text-[11px]">Night</span>
-            </button>
-          </div>
         </div>
       </header>
 

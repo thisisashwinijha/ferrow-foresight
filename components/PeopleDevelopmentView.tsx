@@ -242,7 +242,7 @@ export function PeopleDevelopmentView({
           {expiredCerts.length > 0 && (
             <div className="bg-critical-bg border border-critical-border rounded-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-critical">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-btn bg-white/60 dark:bg-black/20 text-critical border border-critical-border">
+                <div className="p-2 rounded-btn bg-white/60 text-critical border border-critical-border">
                   <AlertOctagon className="w-5 h-5 text-critical" />
                 </div>
                 <div>
@@ -267,7 +267,7 @@ export function PeopleDevelopmentView({
           {expiringSoonCerts.length > 0 && (
             <div className="bg-warning-bg border border-warning-border rounded-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-warning">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-btn bg-white/60 dark:bg-black/20 text-warning border border-warning-border">
+                <div className="p-2 rounded-btn bg-white/60 text-warning border border-warning-border">
                   <Clock className="w-5 h-5 text-warning" />
                 </div>
                 <div>

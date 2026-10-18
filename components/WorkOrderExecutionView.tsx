@@ -12,6 +12,7 @@ import {
   Technician,
   Spares,
 } from '@/lib/types';
+import { formatShiftFull, formatShiftShort } from '@/lib/shifts';
 import { usePlantContext } from './PlantContext';
 import { useToast } from './ToastContext';
 import { WorkflowFlowTracker } from './WorkflowFlowTracker';
@@ -411,9 +412,9 @@ export function WorkOrderExecutionView({
                   workOrder.status === 'closed'
                     ? 'bg-ok/10 text-ok font-semibold'
                     : workOrder.status === 'in_progress'
-                    ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold'
+                    ? 'bg-blue-500/10 text-blue-600 font-semibold'
                     : workOrder.status === 'loto_applied'
-                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold'
+                    ? 'bg-amber-500/10 text-amber-600 font-semibold'
                     : 'bg-surface-2 text-ink-muted'
                 }`}
               >
@@ -479,7 +480,7 @@ export function WorkOrderExecutionView({
             <span className="text-[11px] text-ink-muted">Scheduled Window</span>
             <div className="font-medium text-ink flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-ink-muted" />
-              <span>{workOrder.scheduled_window?.date} · Shift {workOrder.scheduled_window?.shift}</span>
+              <span>{workOrder.scheduled_window?.date} · {formatShiftFull(workOrder.scheduled_window?.shift)}</span>
             </div>
             {workOrder.scheduled_window?.production_status && (
               <div className="pt-0.5">
@@ -534,8 +535,8 @@ export function WorkOrderExecutionView({
 
         {/* Permission / Status Warning Notice */}
         {!canExecute && !isClosed && (
-          <div className="bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 text-xs p-3 rounded-btn flex items-center gap-2">
-            <Info className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
+          <div className="bg-amber-500/10 border border-amber-500/20 text-amber-900 text-xs p-3 rounded-btn flex items-center gap-2">
+            <Info className="w-4 h-4 shrink-0 text-amber-600" />
             <span>
               {executionDisabledReason || `Read-only view: Step execution is restricted to assigned technician ${assignedTechObj?.name || workOrder.assigned_technician}.`}
             </span>
@@ -669,7 +670,7 @@ export function WorkOrderExecutionView({
             </div>
 
             <div className="text-xs text-ink-muted">
-              Slot: <strong className="text-ink">{workOrder.scheduled_window?.date} · Shift {workOrder.scheduled_window?.shift}</strong>
+              Slot: <strong className="text-ink">{workOrder.scheduled_window?.date} · {formatShiftFull(workOrder.scheduled_window?.shift)}</strong>
             </div>
 
             {windowConfirmed ? (
@@ -761,7 +762,7 @@ export function WorkOrderExecutionView({
       <div className="bg-surface rounded-card p-6 border border-line/30 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-btn bg-amber-500/10 text-amber-600 dark:text-amber-400">
+            <div className="p-1.5 rounded-btn bg-amber-500/10 text-amber-600">
               <Shield className="w-4 h-4" />
             </div>
             <div>
@@ -871,7 +872,7 @@ export function WorkOrderExecutionView({
       <div className={`bg-surface rounded-card p-6 border border-line/30 space-y-4 transition-opacity ${!allLotoDone ? 'opacity-60' : ''}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-btn bg-blue-500/10 text-blue-600 dark:text-blue-400">
+            <div className="p-1.5 rounded-btn bg-blue-500/10 text-blue-600">
               <Wrench className="w-4 h-4" />
             </div>
             <div>
@@ -954,7 +955,7 @@ export function WorkOrderExecutionView({
         <div className={`bg-surface rounded-card p-6 border border-line/30 space-y-4 ${!allStepsDone ? 'opacity-70' : ''}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-btn bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <div className="p-1.5 rounded-btn bg-emerald-500/10 text-emerald-600">
                 <CheckCircle2 className="w-4 h-4" />
               </div>
               <div>

@@ -8,6 +8,9 @@ import {
   Spares,
   MachineCriticality,
 } from './types';
+import { normalizeShiftId, formatShiftShort } from './shifts';
+import { evaluateTechnicianCerts, TODAY_REFERENCE_DATE } from './technicianAssignment';
+import { getSeedData } from './data/db';
 
 // ==========================================
 // 1. Zod Schemas for Model Output Validation
@@ -269,7 +272,7 @@ export function checkCertifications(
   assignedTechnician: string | null,
   requiredCertifications: string[],
   technicianCerts: Certification[] = [],
-  referenceDate = '2026-10-18'
+  referenceDate = TODAY_REFERENCE_DATE
 ): GuardrailCheckResult & { valid: boolean; assignmentRemoved: boolean } {
   if (!assignedTechnician) {
     return {
@@ -291,25 +294,14 @@ export function checkCertifications(
     };
   }
 
-  const techCerts = technicianCerts.filter((c) => c.technician_id === assignedTechnician);
-  const certMap = new Map<string, string>();
-  for (const c of techCerts) {
-    certMap.set(c.certification.toLowerCase(), c.valid_until);
-  }
+  const evalResult = evaluateTechnicianCerts(
+    assignedTechnician,
+    requiredCertifications,
+    technicianCerts,
+    referenceDate
+  );
 
-  const missing: string[] = [];
-  const expired: string[] = [];
-
-  for (const req of requiredCertifications) {
-    const validUntil = certMap.get(req.toLowerCase());
-    if (!validUntil) {
-      missing.push(req);
-    } else if (new Date(validUntil) < new Date(referenceDate)) {
-      expired.push(`${req} (expired ${validUntil})`);
-    }
-  }
-
-  if (missing.length === 0 && expired.length === 0) {
+  if (evalResult.hasAllCerts) {
     return {
       rule: 'certification_match',
       pass: true,
@@ -320,8 +312,10 @@ export function checkCertifications(
   }
 
   const reasons = [
-    missing.length > 0 ? `missing: ${missing.join(', ')}` : '',
-    expired.length > 0 ? `expired: ${expired.join(', ')}` : '',
+    evalResult.missingCerts.length > 0 ? `missing: ${evalResult.missingCerts.join(', ')}` : '',
+    evalResult.expiredCerts.length > 0
+      ? `expired: ${evalResult.expiredCerts.map((e) => `${e.name} (${e.validUntil})`).join(', ')}`
+      : '',
   ]
     .filter(Boolean)
     .join('; ');
@@ -498,20 +492,48 @@ export function checkShiftMatch(
   technicianShift?: string | null,
   windowShift?: string | null
 ): GuardrailCheckResult & { assignmentRemoved: boolean } {
-  if (!assignedTechnician || !windowShift || !technicianShift) {
+  if (!assignedTechnician) {
     return {
       rule: 'shift_match',
       pass: true,
-      detail: 'Shift check waived (no technician or window shift specified)',
+      detail: 'No technician assigned',
       assignmentRemoved: false,
     };
   }
 
-  if (technicianShift.toUpperCase() === windowShift.toUpperCase()) {
+  // Look up technician shift if not provided directly
+  let techShift = technicianShift;
+  if (!techShift) {
+    try {
+      const seed = getSeedData();
+      const techs = (seed.technicians as any[]) || [];
+      const found = techs.find((t) => t.id === assignedTechnician);
+      if (found) {
+        techShift = found.shift;
+      }
+    } catch {
+      // ignore in environments without seed
+    }
+  }
+
+  if (!windowShift || !techShift) {
+    return {
+      rule: 'shift_match',
+      pass: false,
+      detail: 'Shift mismatch: window shift or technician shift is unspecified',
+      failBehavior: 'needs_review',
+      assignmentRemoved: true,
+    };
+  }
+
+  const normTech = normalizeShiftId(techShift);
+  const normWin = normalizeShiftId(windowShift);
+
+  if (normTech === normWin) {
     return {
       rule: 'shift_match',
       pass: true,
-      detail: `Technician shift (${technicianShift}) matches proposed window shift (${windowShift})`,
+      detail: `Technician shift (${formatShiftShort(normTech)}) matches proposed window shift (${formatShiftShort(normWin)})`,
       assignmentRemoved: false,
     };
   }
@@ -519,7 +541,7 @@ export function checkShiftMatch(
   return {
     rule: 'shift_match',
     pass: false,
-    detail: `Technician shift (${technicianShift}) does not match proposed window shift (${windowShift})`,
+    detail: `Technician shift (${formatShiftShort(normTech)}) does not match proposed window shift (${formatShiftShort(normWin)})`,
     failBehavior: 'needs_review',
     assignmentRemoved: true,
   };

@@ -595,11 +595,11 @@ export function TechnicianCaptureView({
                           {m.name}
                         </span>
                         {!m.has_sensors ? (
-                          <span className="text-[10px] px-1.5 py-0.2 rounded-chip bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 font-medium">
+                          <span className="text-[10px] px-1.5 py-0.2 rounded-chip bg-amber-500/10 text-amber-700 border border-amber-500/20 font-medium">
                             Legacy · No sensors
                           </span>
                         ) : (
-                          <span className="text-[10px] px-1.5 py-0.2 rounded-chip bg-blue-500/10 text-blue-700 dark:text-blue-300 font-medium">
+                          <span className="text-[10px] px-1.5 py-0.2 rounded-chip bg-blue-500/10 text-blue-700 font-medium">
                             Sensor-rich
                           </span>
                         )}

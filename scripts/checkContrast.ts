@@ -23,7 +23,7 @@ async function run() {
   let totalViolations = 0;
 
   for (const path of PAGES) {
-    for (const theme of ['light', 'dark'] as const) {
+    for (const theme of ['light'] as const) {
       const context = await browser.newContext({
         viewport: { width: 1440, height: 900 },
       });

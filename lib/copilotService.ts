@@ -139,7 +139,7 @@ export function computeRuleBasedCopilot(
     if (wo) {
       if (wo.id === 'WO-2201') {
         return {
-          answer: `Work order WO-2201 on ${wo.machine_id} is scheduled for 2026-10-20 Shift B (changeover). It requires hydraulic seal kit SP-007 (stock available: 3 units). The primary blockers are: (1) Production window confirmation is pending with Production Manager; (2) Mandatory pre-task zero energy permit issue. Warning: Assigned technician P07-T09 holds valid LOTO certification expiring on 10 Nov 2026 (valid today; renewal required within 30 days).`,
+          answer: `Work order WO-2201 on ${wo.machine_id} is scheduled for 2026-10-20 Shift B (14:00 to 22:00) (changeover). It requires hydraulic seal kit SP-007 (stock available: 3 units). The primary blockers are: (1) Production window confirmation is pending with Production Manager; (2) Mandatory pre-task zero energy permit issue. Warning: Assigned technician P07-T09 holds valid LOTO certification expiring on 10 Nov 2026 (valid today; renewal required within 30 days).`,
           cited_ids: ['WO-2201', wo.machine_id, 'SP-007', 'P07-T09'],
           confidence: 0.95,
           answer_found_in_context: true,
@@ -163,6 +163,26 @@ export function computeRuleBasedCopilot(
     }
   }
 
+  // 3b. Who qualifies or is eligible for a technician assignment
+  if (
+    q.includes('who qualifies') ||
+    q.includes('who can be assigned') ||
+    q.includes('eligible technician') ||
+    q.includes('technician assignment')
+  ) {
+    return {
+      answer:
+        'Technician assignment requires active, non-expired certifications matching the task failure mode (plus LOTO when required) and matching the scheduled window shift. For example, for Mechanical + LOTO on Shift B (14:00 to 22:00) at P-07, Rahul Sharma (P07-T07) and Imran Shaikh (P07-T09) qualify (Imran has LOTO expiring Nov 10, 2026 as an advisory warning). Expired technicians (such as P07-T04) or technicians on other shifts are excluded.',
+      cited_ids: ['P07-T07', 'P07-T09', 'P07-T04'],
+      confidence: 0.95,
+      answer_found_in_context: true,
+      follow_up_suggestions: [
+        'Check technician certifications on /people',
+        'What is blocking work order WO-2201?',
+      ],
+    };
+  }
+
   // 4. What is due this week
   if (
     q.includes('due this week') ||
@@ -172,8 +192,8 @@ export function computeRuleBasedCopilot(
   ) {
     return {
       answer: `This week in Plant ${plantId}, 3 priority maintenance events are scheduled:
-• WO-2202 on P07-M06: Compressor main bearing clearance check and oil flush (In progress, Shift A).
-• WO-2201 on P07-M09: Hydraulic cylinder seal replacement (Scheduled Oct 20, Shift B changeover).
+• WO-2202 on P07-M06: Compressor main bearing clearance check and oil flush (In progress, Shift A (06:00 to 14:00)).
+• WO-2201 on P07-M09: Hydraulic cylinder seal replacement (Scheduled Oct 20, Shift B (14:00 to 22:00) changeover).
 • PM-003 on P07-M03: Gearbox GB-1 bearing check (Pulled forward by PM Optimiser due to elevated vibration).`,
       cited_ids: ['WO-2202', 'WO-2201', 'PM-003', 'P07-M06', 'P07-M09', 'P07-M03'],
       confidence: 0.96,
