@@ -10,7 +10,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "vitest run",
+    "test": "AGENT_PROVIDER=cached vitest run",
+    "test:contrast": "AGENT_PROVIDER=cached tsx scripts/checkContrast.ts",
+    "test:overflow": "AGENT_PROVIDER=cached tsx scripts/checkOverflow.ts",
+    "test:e2e": "AGENT_PROVIDER=cached tsx scripts/runE2EScenarios.ts && AGENT_PROVIDER=cached tsx scripts/checkContrast.ts",
+    "qa": "tsx scripts/qa.ts",
     "eval": "tsx scripts/eval.ts",
     "prewarm": "tsx scripts/prewarm.ts"
   },
