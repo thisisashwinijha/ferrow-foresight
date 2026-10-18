@@ -58,10 +58,32 @@ export function getLocalStoreData(): any {
 
 export function saveLocalStoreData(newData: any): void {
   inMemoryStore = newData;
+  const fs = getFs();
+  const path = getPath();
+  if (fs && path) {
+    try {
+      const fullPath = path.resolve(process.cwd(), LOCAL_STATE_PATH);
+      fs.writeFileSync(fullPath, JSON.stringify(newData, null, 2), 'utf-8');
+    } catch (e) {
+      console.warn('Could not write data/local_state.json:', e);
+    }
+  }
 }
 
 export function resetLocalStoreData(): void {
   inMemoryStore = deepClone(seedData);
+  const fs = getFs();
+  const path = getPath();
+  if (fs && path) {
+    try {
+      const fullPath = path.resolve(process.cwd(), LOCAL_STATE_PATH);
+      if (fs.existsSync(fullPath)) {
+        fs.unlinkSync(fullPath);
+      }
+    } catch (e) {
+      console.warn('Could not remove data/local_state.json on reset:', e);
+    }
+  }
 }
 
 export function mutateLocalAlert(
