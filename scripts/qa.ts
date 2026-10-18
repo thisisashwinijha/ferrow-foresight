@@ -131,7 +131,9 @@ async function main() {
   } else {
     // 5. Start Production Server for E2E, Contrast, Overflow
     console.log('\n[QA Lifecycle] Starting Next.js production server on port 3000...');
-    execSync('nohup npx next start -p 3000 </dev/null >/dev/null 2>&1 &');
+    execSync('nohup npx next start -p 3000 </dev/null >/dev/null 2>&1 &', {
+      env: { ...process.env, AGENT_PROVIDER: 'cached' },
+    });
 
     const isReady = await waitForServer(3000, 25);
     if (!isReady) {
