@@ -357,3 +357,6 @@ export async function executeAgent<T = any>(
     fallback_chain: attemptedProviders,
   } as AgentExecutionResult<T>;
 }
+
+export const executeAgentWithFallback = executeAgent;
+

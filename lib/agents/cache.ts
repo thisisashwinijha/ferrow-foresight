@@ -89,6 +89,15 @@ export function checkIpLimit(ip?: string): { allowed: boolean; remaining: number
   return { allowed: true, remaining: maxPerHour - timestamps.length };
 }
 
+export function checkRateLimit(ip?: string): { allowed: boolean; remaining: number } {
+  return checkIpLimit(ip);
+}
+
+export function isDailyCapExceeded(): { exceeded: boolean } {
+  const stats = getTodayLiveCallStats();
+  return { exceeded: stats.isCapped };
+}
+
 /**
  * Computes deterministic SHA-256 hash for agent + prompt_version + context
  */
