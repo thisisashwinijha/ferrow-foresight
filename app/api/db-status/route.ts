@@ -1,39 +1,55 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
-import { withTimeout } from '@/lib/supabase';
-import { getDatabaseState } from '@/lib/data/dbState';
+import { getSupabaseBrowserClient, withTimeout, hasSupabaseKeys } from '@/lib/supabase';
+import { getSupabaseAdminClient, hasSupabaseAdminKeys } from '@/lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const adminClient = getSupabaseAdminClient();
+  const hasKeys = hasSupabaseKeys() || hasSupabaseAdminKeys();
 
-  if (!adminClient) {
+  if (!hasKeys) {
     return NextResponse.json({
+      hasKeys: false,
       live: false,
-      reason: 'SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_URL missing',
+      reason: 'Supabase keys not configured',
+    });
+  }
+
+  // Use admin client if available, otherwise browser anon client
+  const client = getSupabaseAdminClient() || getSupabaseBrowserClient();
+
+  if (!client) {
+    return NextResponse.json({
+      hasKeys: true,
+      live: false,
+      reason: 'Failed to initialize Supabase client',
     });
   }
 
   try {
     const { error } = await withTimeout<any>(
-      adminClient.from('plants').select('id', { head: true, count: 'exact' }) as any,
-      2500,
-      'db-ping'
+      client.from('plants').select('id').limit(1) as any,
+      4000,
+      'db-status-check'
     );
 
     if (error) {
+      console.error('[API /api/db-status] Supabase ping error:', error);
       return NextResponse.json({
+        hasKeys: true,
         live: false,
         reason: error.message,
       });
     }
 
     return NextResponse.json({
+      hasKeys: true,
       live: true,
     });
   } catch (err: any) {
+    console.error('[API /api/db-status] Supabase ping exception:', err);
     return NextResponse.json({
+      hasKeys: true,
       live: false,
       reason: err?.message || 'Database connection timeout',
     });

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Sun,
@@ -23,6 +23,8 @@ import { Machine, Plant } from '@/lib/types';
 interface TopBarProps {
   plants: Plant[];
   machines: Machine[];
+  initialHasKeys?: boolean;
+  initialLive?: boolean;
   onToggleSidebar?: () => void;
 }
 
@@ -36,7 +38,13 @@ const ROLES: UserRole[] = [
   'Training Coordinator',
 ];
 
-export function TopBar({ plants, machines, onToggleSidebar }: TopBarProps) {
+export function TopBar({
+  plants,
+  machines,
+  initialHasKeys = false,
+  initialLive = false,
+  onToggleSidebar,
+}: TopBarProps) {
   const router = useRouter();
   const { plantId, setPlantId, role, setRole, lineId } = usePlantContext();
   const { theme, setTheme } = useTheme();
@@ -45,6 +53,36 @@ export function TopBar({ plants, machines, onToggleSidebar }: TopBarProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isPlantDropdownOpen, setIsPlantDropdownOpen] = useState(false);
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
+  const [dbStatus, setDbStatus] = useState<{ hasKeys: boolean; live: boolean; loaded: boolean }>({
+    hasKeys: initialHasKeys,
+    live: initialLive,
+    loaded: true,
+  });
+
+  useEffect(() => {
+    let mounted = true;
+    async function checkDb() {
+      try {
+        const res = await fetch('/api/db-status', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (mounted) {
+            setDbStatus({ hasKeys: Boolean(data.hasKeys), live: Boolean(data.live), loaded: true });
+          }
+        }
+      } catch {
+        if (mounted) {
+          setDbStatus({ hasKeys: false, live: false, loaded: true });
+        }
+      }
+    }
+    checkDb();
+    const interval = setInterval(checkDb, 15000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   const selectedPlant = plants.find((p) => p.id === plantId);
   const activeTz = PLANT_TIMEZONES[plantId] || 'UTC';
@@ -242,10 +280,24 @@ export function TopBar({ plants, machines, onToggleSidebar }: TopBarProps) {
             )}
           </div>
 
-          {/* Demo Pill (Soft style) */}
-          <div className="hidden sm:flex items-center px-2 py-0.5 rounded-full bg-agent/10 text-agent text-[11px] font-medium">
-            Demo
-          </div>
+          {/* Data Source Indicator: Data: Live vs Data: Demo */}
+          {dbStatus.live ? (
+            <div
+              title="Connected to Supabase live database"
+              className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-chip bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[11px] font-medium border border-emerald-500/20"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Data: Live
+            </div>
+          ) : (
+            <div
+              title={dbStatus.hasKeys ? 'Live database unavailable, showing snapshot' : 'Running on local seed demo dataset'}
+              className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-chip bg-surface-2 text-ink-muted text-[11px] font-medium border border-line/40"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-ink-muted/50" />
+              {dbStatus.hasKeys ? 'Data: Demo' : 'Demo data'}
+            </div>
+          )}
 
           {/* Reset Demo Button */}
           <button

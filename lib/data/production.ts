@@ -29,7 +29,7 @@ export async function getProductionSchedule(
       if (error || !data) return { data: null, error };
 
       let list = data as ProductionSchedule[];
-      if (plantId && (!lineId || lineId === 'all')) {
+      if (plantId && plantId !== 'all' && (!lineId || lineId === 'all')) {
         const plantLines = new Set(getLinesSync(plantId).map((l) => l.id));
         list = list.filter((s) => plantLines.has(s.line_id));
       }

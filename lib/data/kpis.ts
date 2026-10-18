@@ -23,11 +23,11 @@ export function getPreviousKpiSnapshotSync(plantId: string): KpiSnapshot | undef
 export async function getKpiSnapshots(plantId: string, lineId?: string): Promise<KpiSnapshot[]> {
   return queryWithFallback<KpiSnapshot[]>(
     async (client) => {
-      const { data, error } = await client
-        .from('kpi_snapshots')
-        .select('*')
-        .eq('plant_id', plantId)
-        .order('month', { ascending: true });
+      let query = client.from('kpi_snapshots').select('*');
+      if (plantId && plantId !== 'all') {
+        query = query.eq('plant_id', plantId);
+      }
+      const { data, error } = await query.order('month', { ascending: true });
       return { data: data as KpiSnapshot[], error };
     },
     () => getKpiSnapshotsSync(plantId, lineId),

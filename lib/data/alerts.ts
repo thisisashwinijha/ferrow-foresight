@@ -31,7 +31,7 @@ export async function getAlerts(plantId: string, lineId?: string): Promise<Alert
   return queryWithFallback<Alert[]>(
     async (client) => {
       let query = client.from('alerts').select('*');
-      if (plantId) {
+      if (plantId && plantId !== 'all') {
         query = query.eq('plant_id', plantId);
       }
       const { data, error } = await query;
@@ -56,11 +56,11 @@ export async function getAlertById(id: string, plantId?: string): Promise<Alert 
   return queryWithFallback<Alert | undefined>(
     async (client) => {
       let query = client.from('alerts').select('*').eq('id', id);
-      if (plantId) {
+      if (plantId && plantId !== 'all') {
         query = query.eq('plant_id', plantId);
       }
-      const { data, error } = await query.single();
-      return { data: data as Alert, error };
+      const { data, error } = await query.maybeSingle();
+      return { data: (data as Alert) || undefined, error };
     },
     () => getAlertByIdSync(id),
     'getAlertById'

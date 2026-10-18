@@ -22,7 +22,7 @@ export async function getPlants(plantId?: string, lineId?: string): Promise<Plan
   return queryWithFallback<Plant[]>(
     async (client) => {
       let query = client.from('plants').select('*');
-      if (plantId) {
+      if (plantId && plantId !== 'all') {
         query = query.eq('id', plantId);
       }
       const { data, error } = await query;
@@ -30,7 +30,7 @@ export async function getPlants(plantId?: string, lineId?: string): Promise<Plan
     },
     () => {
       const all = getPlantsSync();
-      if (!plantId) return all;
+      if (!plantId || plantId === 'all') return all;
       return all.filter((p) => p.id === plantId);
     },
     'getPlants'

@@ -1,10 +1,18 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Database, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 
-export function DatabaseBanner() {
-  const [isUnavailable, setIsUnavailable] = useState<boolean>(false);
+interface DatabaseBannerProps {
+  initialHasKeys?: boolean;
+  initialLive?: boolean;
+}
+
+export function DatabaseBanner({
+  initialHasKeys = false,
+  initialLive = false,
+}: DatabaseBannerProps) {
+  const [showErrorBanner, setShowErrorBanner] = useState<boolean>(initialHasKeys && !initialLive);
 
   useEffect(() => {
     let mounted = true;
@@ -15,12 +23,13 @@ export function DatabaseBanner() {
         if (res.ok) {
           const data = await res.json();
           if (mounted) {
-            setIsUnavailable(!data.live);
+            // Show the "Live database unavailable" banner ONLY when keys exist and Supabase fails
+            setShowErrorBanner(Boolean(data.hasKeys && !data.live));
           }
         }
       } catch {
         if (mounted) {
-          setIsUnavailable(true);
+          setShowErrorBanner(false);
         }
       }
     }
@@ -34,7 +43,7 @@ export function DatabaseBanner() {
     };
   }, []);
 
-  if (!isUnavailable) return null;
+  if (!showErrorBanner) return null;
 
   return (
     <div

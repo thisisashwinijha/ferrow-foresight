@@ -24,7 +24,8 @@ export function getSeedData() {
 /**
  * Executes a Supabase query with 5-second timeout resilience and circuit breaker.
  * On any failure, timeout, or missing client, gracefully falls back to seed data.
- * Never throws a raw error.
+ * Logs the underlying Supabase error to the server console whenever fallback triggers.
+ * Never throws a raw error or exposes raw database errors in the UI.
  */
 export async function queryWithFallback<T>(
   queryFn: (client: SupabaseClient) => Promise<{ data: T | null; error: any }>,
@@ -39,24 +40,33 @@ export async function queryWithFallback<T>(
   const client = getSupabaseBrowserClient();
 
   if (!client) {
+    // Keys missing - silent fallback to seed data without raising error alert
     markDatabaseUnavailable('Supabase keys missing');
-    tripDbCircuit(60000);
     return fallbackFn();
   }
 
   try {
     const result = await withTimeout(queryFn(client), 5000, context);
-    if (result.error || result.data === null) {
-      console.warn(`[DataLayer] Supabase error in ${context}:`, result.error?.message || 'Null data returned');
-      markDatabaseUnavailable(result.error?.message || 'Database returned error');
+
+    if (result.error) {
+      // Log underlying error to server console (never shown to UI)
+      console.error(`[DataLayer Supabase Error] ${context}:`, {
+        message: result.error?.message,
+        details: result.error?.details,
+        hint: result.error?.hint,
+        code: result.error?.code,
+      });
+      markDatabaseUnavailable(result.error?.message || 'Database query error');
       tripDbCircuit(20000);
       return fallbackFn();
     }
+
     markDatabaseAvailable();
     resetDbCircuit();
-    return result.data;
+    return result.data as T;
   } catch (err: any) {
-    console.warn(`[DataLayer] Database exception or timeout in ${context}:`, err?.message);
+    // Log timeout or network exception to server console
+    console.error(`[DataLayer Supabase Exception] ${context}:`, err?.message || err);
     markDatabaseUnavailable(err?.message || 'Database unavailable');
     tripDbCircuit(20000);
     return fallbackFn();

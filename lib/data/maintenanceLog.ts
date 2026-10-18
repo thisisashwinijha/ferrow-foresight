@@ -38,10 +38,10 @@ export async function getMaintenanceLogs(
       if (error || !data) return { data: null, error };
 
       let list = data as MaintenanceLog[];
-      if (plantId || (lineId && lineId !== 'all')) {
+      if ((plantId && plantId !== 'all') || (lineId && lineId !== 'all')) {
         list = list.filter((log) => {
           const machine = getMachineByIdSync(log.machine_id);
-          if (plantId && machine?.plant_id !== plantId) return false;
+          if (plantId && plantId !== 'all' && machine?.plant_id !== plantId) return false;
           if (lineId && lineId !== 'all' && machine?.line_id !== lineId) return false;
           return true;
         });

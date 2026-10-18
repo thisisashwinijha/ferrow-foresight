@@ -14,7 +14,10 @@ export function getLinesSync(plantId?: string, lineId?: string): Line[] {
 export async function getLines(plantId: string, lineId?: string): Promise<Line[]> {
   return queryWithFallback<Line[]>(
     async (client) => {
-      let query = client.from('lines').select('*').eq('plant_id', plantId);
+      let query = client.from('lines').select('*');
+      if (plantId && plantId !== 'all') {
+        query = query.eq('plant_id', plantId);
+      }
       if (lineId && lineId !== 'all') {
         query = query.eq('id', lineId);
       }

@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { Suspense } from 'react';
 import '@fontsource/ibm-plex-sans/400.css';
 import '@fontsource/ibm-plex-sans/500.css';
 import '@fontsource/ibm-plex-sans/600.css';
@@ -10,6 +9,9 @@ import { ToastProvider } from '@/components/ToastContext';
 import { AppShell } from '@/components/AppShell';
 import { getPlants } from '@/lib/data/plants';
 import { getAllMachines } from '@/lib/data/machines';
+import { getDatabaseState } from '@/lib/data/dbState';
+import { hasSupabaseKeys } from '@/lib/supabase';
+import { hasSupabaseAdminKeys } from '@/lib/supabaseAdmin';
 
 export const metadata: Metadata = {
   title: 'Ferrow Foresight | Maintenance Operating System',
@@ -24,6 +26,10 @@ export default async function RootLayout({
   const plants = await getPlants();
   const machines = await getAllMachines();
 
+  const hasKeys = hasSupabaseKeys() || hasSupabaseAdminKeys();
+  const dbState = getDatabaseState();
+  const isLive = hasKeys && !dbState.isUnavailable;
+
   return (
     <html
       lang="en"
@@ -32,15 +38,18 @@ export default async function RootLayout({
     >
       <body className="bg-canvas text-ink antialiased selection:bg-ink/10 selection:text-ink font-sans">
         <ThemeProvider>
-          <Suspense fallback={null}>
-            <PlantProvider>
-              <ToastProvider>
-                <AppShell plants={plants} machines={machines}>
-                  {children}
-                </AppShell>
-              </ToastProvider>
-            </PlantProvider>
-          </Suspense>
+          <PlantProvider>
+            <ToastProvider>
+              <AppShell
+                plants={plants}
+                machines={machines}
+                initialHasKeys={hasKeys}
+                initialLive={isLive}
+              >
+                {children}
+              </AppShell>
+            </ToastProvider>
+          </PlantProvider>
         </ThemeProvider>
       </body>
     </html>

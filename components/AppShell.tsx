@@ -10,9 +10,17 @@ interface AppShellProps {
   children: React.ReactNode;
   plants: Plant[];
   machines: Machine[];
+  initialHasKeys?: boolean;
+  initialLive?: boolean;
 }
 
-export function AppShell({ children, plants, machines }: AppShellProps) {
+export function AppShell({
+  children,
+  plants,
+  machines,
+  initialHasKeys = false,
+  initialLive = false,
+}: AppShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
@@ -20,9 +28,11 @@ export function AppShell({ children, plants, machines }: AppShellProps) {
       <TopBar
         plants={plants}
         machines={machines}
+        initialHasKeys={initialHasKeys}
+        initialLive={initialLive}
         onToggleSidebar={() => setMobileMenuOpen(true)}
       />
-      <DatabaseBanner />
+      <DatabaseBanner initialHasKeys={initialHasKeys} initialLive={initialLive} />
       <div className="flex-1 flex overflow-hidden">
         <Sidebar
           isOpenMobile={mobileMenuOpen}

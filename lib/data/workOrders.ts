@@ -25,7 +25,7 @@ export async function getWorkOrders(plantId: string, lineId?: string): Promise<W
   return queryWithFallback<WorkOrder[]>(
     async (client) => {
       let query = client.from('work_orders').select('*');
-      if (plantId) {
+      if (plantId && plantId !== 'all') {
         query = query.eq('plant_id', plantId);
       }
       const { data, error } = await query;
@@ -49,11 +49,11 @@ export async function getWorkOrderById(id: string, plantId?: string): Promise<Wo
   return queryWithFallback<WorkOrder | undefined>(
     async (client) => {
       let query = client.from('work_orders').select('*').eq('id', id);
-      if (plantId) {
+      if (plantId && plantId !== 'all') {
         query = query.eq('plant_id', plantId);
       }
-      const { data, error } = await query.single();
-      return { data: data as WorkOrder, error };
+      const { data, error } = await query.maybeSingle();
+      return { data: (data as WorkOrder) || undefined, error };
     },
     () => getWorkOrderByIdSync(id),
     'getWorkOrderById'

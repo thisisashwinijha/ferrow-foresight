@@ -18,7 +18,7 @@ export async function getSpares(plantId: string, lineId?: string): Promise<Spare
   return queryWithFallback<Spares[]>(
     async (client) => {
       let query = client.from('spares').select('*');
-      if (plantId) {
+      if (plantId && plantId !== 'all') {
         query = query.eq('plant_id', plantId);
       }
       const { data, error } = await query;
@@ -33,11 +33,11 @@ export async function getSpareById(id: string, plantId?: string): Promise<Spares
   return queryWithFallback<Spares | undefined>(
     async (client) => {
       let query = client.from('spares').select('*').eq('id', id);
-      if (plantId) {
+      if (plantId && plantId !== 'all') {
         query = query.eq('plant_id', plantId);
       }
-      const { data, error } = await query.single();
-      return { data: data as Spares, error };
+      const { data, error } = await query.maybeSingle();
+      return { data: (data as Spares) || undefined, error };
     },
     () => getSpareByIdSync(id),
     'getSpareById'

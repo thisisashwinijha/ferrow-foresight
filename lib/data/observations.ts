@@ -28,7 +28,7 @@ export async function getObservations(
   return queryWithFallback<Observation[]>(
     async (client) => {
       let query = client.from('observations').select('*');
-      if (plantId) {
+      if (plantId && plantId !== 'all') {
         query = query.eq('plant_id', plantId);
       }
       if (machineId) {
