@@ -3,18 +3,20 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": "22.x"
+    "node": ">=22.0.0"
   },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "AGENT_PROVIDER=cached vitest run",
-    "test:contrast": "AGENT_PROVIDER=cached tsx scripts/checkContrast.ts",
-    "test:overflow": "AGENT_PROVIDER=cached tsx scripts/checkOverflow.ts",
-    "test:e2e": "AGENT_PROVIDER=cached tsx scripts/runE2EScenarios.ts && AGENT_PROVIDER=cached tsx scripts/checkContrast.ts",
-    "qa": "tsx scripts/qa.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "cross-env AGENT_PROVIDER=cached vitest run",
+    "test:contrast": "cross-env AGENT_PROVIDER=cached tsx scripts/checkContrast.ts",
+    "test:overflow": "cross-env AGENT_PROVIDER=cached tsx scripts/checkOverflow.ts",
+    "test:e2e": "cross-env AGENT_PROVIDER=cached tsx scripts/runE2EScenarios.ts && cross-env AGENT_PROVIDER=cached tsx scripts/checkContrast.ts",
+    "qa": "cross-env AGENT_PROVIDER=cached tsx scripts/qa.ts",
+    "screenshots": "cross-env AGENT_PROVIDER=cached tsx scripts/screenshots.ts",
     "eval": "tsx scripts/eval.ts",
     "prewarm": "tsx scripts/prewarm.ts"
   },
@@ -47,6 +49,7 @@
     "@types/react-dom": "^18",
     "autoprefixer": "^10.4.20",
     "axe-core": "^4.14.0",
+    "cross-env": "^10.1.0",
     "eslint": "^8",
     "eslint-config-next": "^14.2.15",
     "postcss": "^8.4.47",
