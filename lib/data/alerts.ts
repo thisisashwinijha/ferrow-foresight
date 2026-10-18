@@ -38,6 +38,14 @@ export async function getAlerts(plantId: string, lineId?: string): Promise<Alert
       if (error || !data) return { data: null, error };
 
       let filtered = data as Alert[];
+      const localAlerts = getAlertsSync(plantId, lineId);
+      const existingIds = new Set(filtered.map((a) => a.id));
+      for (const la of localAlerts) {
+        if (!existingIds.has(la.id)) {
+          filtered.unshift(la);
+        }
+      }
+
       if (lineId && lineId !== 'all') {
         filtered = filtered.filter((a) => {
           const windowLine = a.proposed_window?.line_id;
@@ -60,6 +68,10 @@ export async function getAlertById(id: string, plantId?: string): Promise<Alert 
         query = query.eq('plant_id', plantId);
       }
       const { data, error } = await query.maybeSingle();
+      if (!data) {
+        const local = getAlertByIdSync(id);
+        return { data: local || null, error: null };
+      }
       return { data: (data as Alert) || undefined, error };
     },
     () => getAlertByIdSync(id),

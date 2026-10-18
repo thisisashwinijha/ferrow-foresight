@@ -157,11 +157,28 @@ export function checkSchemaValid(data: unknown): GuardrailCheckResult {
     };
   }
 
-  const errors = parseResult.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
+  const hasFailureModeIssue = parseResult.error.issues.some((i) => i.path.includes('failure_mode'));
+  if (hasFailureModeIssue) {
+    return {
+      rule: 'schema_valid',
+      pass: false,
+      detail: 'Failure mode not recognised (failure_mode). Pick one below.',
+      failBehavior: 'needs_review',
+    };
+  }
+
+  const firstIssue = parseResult.error.issues[0];
+  const fieldName = firstIssue?.path?.join('.') || 'payload';
+  const humanDetail = fieldName === 'urgency'
+    ? 'Urgency level not recognised. Pick one below.'
+    : fieldName.includes('window')
+    ? 'Maintenance window format invalid.'
+    : `Recommendation schema requires review (${fieldName}).`;
+
   return {
     rule: 'schema_valid',
     pass: false,
-    detail: `Schema validation failed: ${errors}`,
+    detail: humanDetail,
     failBehavior: 'needs_review',
   };
 }

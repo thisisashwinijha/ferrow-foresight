@@ -58,6 +58,100 @@ export interface ParseResult<T = any> {
 }
 
 /**
+ * Normalises raw failure mode strings into strict taxonomy.
+ * Handles lowercasing, space/hyphen to underscore, synonyms and invalid fallbacks.
+ */
+export function normalizeFailureMode(raw: any): { mode: string; normalized: boolean } {
+  if (!raw || typeof raw !== 'string') {
+    return { mode: 'unknown', normalized: false };
+  }
+  const cleaned = raw.trim().toLowerCase().replace(/[-\s]+/g, '_');
+
+  const synonymMap: Record<string, string> = {
+    electrical: 'electrical_fault',
+    electrical_fault: 'electrical_fault',
+    electric: 'electrical_fault',
+    electric_fault: 'electrical_fault',
+    electrical_burn: 'electrical_fault',
+    short_circuit: 'electrical_fault',
+    contactor_burn: 'electrical_fault',
+    mcc_fault: 'electrical_fault',
+    overheating: 'motor_overheating',
+    overheat: 'motor_overheating',
+    motor_overheating: 'motor_overheating',
+    motor_overheat: 'motor_overheating',
+    thermal_overheating: 'motor_overheating',
+    bearing: 'bearing_wear',
+    bearing_wear: 'bearing_wear',
+    bearing_damage: 'bearing_wear',
+    bearing_fatigue: 'bearing_wear',
+    bearing_failure: 'bearing_wear',
+    belt: 'belt_wear',
+    belt_wear: 'belt_wear',
+    belt_slip: 'belt_wear',
+    belt_slippage: 'belt_wear',
+    lubrication: 'lubrication_failure',
+    lubrication_failure: 'lubrication_failure',
+    lube_failure: 'lubrication_failure',
+    lubricant_failure: 'lubrication_failure',
+    misaligned: 'misalignment',
+    misalignment: 'misalignment',
+    shaft_misalignment: 'misalignment',
+    coupling_misalignment: 'misalignment',
+    hydraulic: 'hydraulic_leak',
+    hydraulic_leak: 'hydraulic_leak',
+    hydraulic_fluid_leak: 'hydraulic_leak',
+    oil_leak: 'hydraulic_leak',
+    seal: 'seal_failure',
+    seal_failure: 'seal_failure',
+    seal_leak: 'seal_failure',
+    lip_seal_wear: 'seal_failure',
+    pneumatic: 'pneumatic_leak',
+    pneumatic_leak: 'pneumatic_leak',
+    air_leak: 'pneumatic_leak',
+    pressure_leak: 'pneumatic_leak',
+    sensor: 'sensor_fault',
+    sensor_fault: 'sensor_fault',
+    sensor_dropout: 'sensor_fault',
+    sensor_error: 'sensor_fault',
+    sensor_anomaly: 'sensor_fault',
+    normal: 'none',
+    none: 'none',
+    false_alarm: 'none',
+    healthy: 'none',
+    unknown: 'unknown',
+    unrecognized: 'unknown',
+    insufficient: 'unknown',
+    not_recognized: 'unknown',
+  };
+
+  if (synonymMap[cleaned]) {
+    return { mode: synonymMap[cleaned], normalized: true };
+  }
+
+  const valid = [
+    'bearing_wear',
+    'belt_wear',
+    'misalignment',
+    'lubrication_failure',
+    'motor_overheating',
+    'hydraulic_leak',
+    'seal_failure',
+    'electrical_fault',
+    'pneumatic_leak',
+    'sensor_fault',
+    'unknown',
+    'none',
+  ];
+
+  if (valid.includes(cleaned)) {
+    return { mode: cleaned, normalized: true };
+  }
+
+  return { mode: 'unknown', normalized: false };
+}
+
+/**
  * Safely parses and validates agent response strings according to agent type.
  */
 export function parseAgentResponse(
@@ -100,6 +194,10 @@ export function parseAgentResponse(
       try {
         const jsonStr = extractJsonString(interpreterRaw);
         const parsed = JSON.parse(jsonStr);
+        if (parsed && typeof parsed === 'object' && parsed.failure_mode) {
+          const norm = normalizeFailureMode(parsed.failure_mode);
+          parsed.failure_mode = norm.mode;
+        }
         const val = InterpreterOutputSchema.safeParse(parsed);
         if (val.success) {
           interpreterData = val.data;
@@ -111,7 +209,51 @@ export function parseAgentResponse(
 
     try {
       const jsonStr = extractJsonString(plannerRaw);
-      const parsed = JSON.parse(jsonStr);
+      let parsed = JSON.parse(jsonStr);
+
+      let failureModeUnrecognised = false;
+      if (parsed && typeof parsed === 'object') {
+        const norm = normalizeFailureMode(parsed.failure_mode);
+        parsed.failure_mode = norm.mode;
+        if (!norm.normalized) {
+          failureModeUnrecognised = true;
+          parsed.insufficient_evidence = true;
+        }
+
+        // Urgency normalization
+        if (typeof parsed.urgency === 'string') {
+          const u = parsed.urgency.trim().toUpperCase();
+          if (['P1', 'P2', 'P3'].includes(u)) {
+            parsed.urgency = u;
+          } else if (u.toLowerCase() === 'none') {
+            parsed.urgency = 'none';
+          } else {
+            parsed.urgency = 'P3';
+          }
+        }
+
+        // Action type normalization
+        if (typeof parsed.action_type === 'string') {
+          const a = parsed.action_type.trim().toLowerCase().replace(/[-\s]+/g, '_');
+          if (['monitor', 'inspect', 'repair', 'replace', 'escalate'].includes(a)) {
+            parsed.action_type = a;
+          } else {
+            parsed.action_type = 'inspect';
+          }
+        }
+
+        // Proposed window normalization
+        if (parsed.proposed_window && typeof parsed.proposed_window === 'object') {
+          if (typeof parsed.proposed_window.window_type === 'string') {
+            const wt = parsed.proposed_window.window_type.trim().toLowerCase().replace(/[-\s]+/g, '_');
+            if (['run', 'changeover', 'low_load', 'planned_shutdown'].includes(wt)) {
+              parsed.proposed_window.window_type = wt;
+            } else {
+              parsed.proposed_window.window_type = 'changeover';
+            }
+          }
+        }
+      }
 
       const schemaValidation = TriagePlannerOutputSchema.safeParse(parsed);
       if (!schemaValidation.success) {
@@ -131,20 +273,34 @@ export function parseAgentResponse(
 
       // Run Guardrails
       const guardrailOutcome = runAllGuardrails(validPlannerData, guardrailContext);
+      if (failureModeUnrecognised) {
+        guardrailOutcome.pass = false;
+        guardrailOutcome.status = 'needs_review';
+        guardrailOutcome.checks.unshift({
+          rule: 'failure_mode_recognized',
+          pass: false,
+          detail: 'Failure mode not recognised. Pick one below.',
+          failBehavior: 'needs_review',
+        });
+      }
+
+      const finalStatus = failureModeUnrecognised
+        ? 'needs_review'
+        : guardrailOutcome.pass
+        ? 'pending'
+        : guardrailOutcome.status === 'suppressed'
+        ? 'suppressed'
+        : 'needs_review';
 
       return {
         success: true,
         data: {
           ...validPlannerData,
+          status: finalStatus,
           guardrail_result: {
             pass: guardrailOutcome.pass,
             checks: guardrailOutcome.checks,
           },
-          status: guardrailOutcome.pass
-            ? 'pending'
-            : guardrailOutcome.status === 'suppressed'
-            ? 'suppressed'
-            : 'needs_review',
           assigned_technician: guardrailOutcome.modifiedData.assigned_technician,
           loto_required: guardrailOutcome.modifiedData.loto_required,
           required_certifications: guardrailOutcome.modifiedData.required_certifications,

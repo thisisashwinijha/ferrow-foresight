@@ -114,7 +114,11 @@ function computeRuleBasedTriage(
     noteLower.includes('ozone') ||
     noteLower.includes('spark') ||
     noteLower.includes('breaker') ||
-    noteLower.includes('tripping')
+    noteLower.includes('tripping') ||
+    noteLower.includes('jalne') ||
+    noteLower.includes('contactor') ||
+    noteLower.includes('bhinbhina') ||
+    noteLower.includes('paas')
   ) {
     if (noteLower.includes('belt') || noteLower.includes('pulley') || noteLower.includes('squeal')) {
       failureMode = 'belt_wear';
@@ -129,11 +133,16 @@ function computeRuleBasedTriage(
       if (sp) sparesCheck = [{ part_id: sp.part_no || 'SP-004', name: sp.name, stock: sp.stock, status: sp.stock > 0 ? 'available' : 'stockout', action: 'reserve 1' }];
     } else {
       failureMode = 'electrical_fault';
-      descriptiveTitle = 'Electrical contact degradation & contactor overheating';
+      const isMcc = machine.type === 'mcc' || machine.id === 'P07-M30' || noteLower.includes('mcc') || noteLower.includes('contactor');
+      descriptiveTitle = isMcc
+        ? 'MCC contactor contact degradation & electrical insulation breakdown'
+        : 'Electrical contact degradation & contactor overheating';
       urgency = 'P1';
-      actionType = 'replace';
-      recommendedAction = 'Apply LOTO immediately. Isolate electrical feed, inspect contactors and thermal overload relay, and replace degraded components.';
-      requiredCerts = ['Electrical LV', 'LOTO'];
+      actionType = isMcc ? 'escalate' : 'replace';
+      recommendedAction = isMcc
+        ? 'Apply LOTO immediately. Isolate incoming feeder to MCC-3. Inspect main contactor contacts for pitting and replace degraded contactor assembly.'
+        : 'Apply LOTO immediately. Isolate electrical feed, inspect contactors and thermal overload relay, and replace degraded components.';
+      requiredCerts = isMcc ? ['Electrical HT', 'LOTO'] : ['Electrical LV', 'LOTO'];
       assignedTechId = 'P07-T02';
       assignedShift = 'C';
       const sp = allSpares.find((s) => s.part_no === 'SP-012' || s.id === 'P07-SP-012');
@@ -471,11 +480,12 @@ export async function triageService(input: TriageInput): Promise<TriageResult> {
     const { getSupabaseAdminClient } = await import('./supabaseAdmin');
     const admin = getSupabaseAdminClient();
     if (admin) {
+      const { spares_blocked, ...supabaseAlert } = alert as any;
       if (input.alert_id) {
-        await admin.from('alerts').update(alert).eq('id', input.alert_id);
+        await admin.from('alerts').update(supabaseAlert).eq('id', input.alert_id);
       } else {
         await admin.from('observations').insert(observation);
-        await admin.from('alerts').insert(alert);
+        await admin.from('alerts').insert(supabaseAlert);
       }
     }
   } catch (e) {
