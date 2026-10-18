@@ -1,5 +1,5 @@
 import seedData from '@/data/seed_data.json';
-import { Alert, WorkOrder, Spares, Machine, Observation, MaintenanceLog } from '../types';
+import { Alert, WorkOrder, Spares, Machine, Observation, MaintenanceLog, PmPlan } from '../types';
 import { getBaselineRiskScore, getBaselineHealthScore } from '../lifecycle';
 
 let inMemoryStore: any = null;
@@ -296,4 +296,19 @@ export function closeLocalWorkOrder(
     machine: updatedMachine as Machine,
     log: newLog,
   };
+}
+
+export function mutateLocalPmPlan(
+  pmId: string,
+  updates: Partial<PmPlan>
+): PmPlan | null {
+  const store = getLocalStoreData();
+  const plans: PmPlan[] = (store.pm_plan as unknown as PmPlan[]) || [];
+  const index = plans.findIndex((p) => p.id === pmId);
+  if (index === -1) return null;
+
+  plans[index] = { ...plans[index], ...updates };
+  store.pm_plan = plans;
+  saveLocalStoreData(store);
+  return plans[index];
 }
