@@ -201,6 +201,8 @@ describe('Technician Assignment Logic (Hotfix 06C)', () => {
           role: 'Senior Mechanical Technician',
           shift: 'A',
           plant_id: 'P-07',
+          years_experience: 10,
+          available: true,
         },
       ];
 

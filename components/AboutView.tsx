@@ -230,6 +230,12 @@ export function AboutView() {
         </div>
       </div>
 
+      {/* PWA Install Hint */}
+      <div className="flex items-center justify-between px-4 py-2.5 rounded-btn bg-surface border border-line text-xs shadow-2xs">
+        <span className="font-medium text-ink">Install: use your browser&apos;s Install app option</span>
+        <span className="text-[11px] text-ink-muted">PWA Ready · Offline Shell · Zero Data Caching</span>
+      </div>
+
       {/* Thought Process: 4 Numbered Steps */}
       <div className="space-y-4">
         <div>

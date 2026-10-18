@@ -16,6 +16,17 @@ import { hasSupabaseAdminKeys } from '@/lib/supabaseAdmin';
 export const metadata: Metadata = {
   title: 'Ferrow Foresight | Maintenance Operating System',
   description: 'Condition-based and risk-based maintenance operating system for packaging and processing',
+  manifest: '/manifest.json',
+  themeColor: '#1E252B',
+  icons: {
+    icon: [
+      { url: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon-512x512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+    ],
+  },
 };
 
 export default async function RootLayout({
@@ -51,6 +62,17 @@ export default async function RootLayout({
             </ToastProvider>
           </PlantProvider>
         </ThemeProvider>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+                window.addEventListener('load', () => {
+                  navigator.serviceWorker.register('/sw.js').catch(() => {});
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );
