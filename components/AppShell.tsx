@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { TopBar } from './TopBar';
 import { Sidebar } from './Sidebar';
 import { DatabaseBanner } from './DatabaseBanner';
+import { PlantCopilotDrawer } from './PlantCopilotDrawer';
 import { Plant, Machine } from '@/lib/types';
 
 interface AppShellProps {
@@ -42,6 +43,7 @@ export function AppShell({
           {children}
         </main>
       </div>
+      <PlantCopilotDrawer />
     </div>
   );
 }

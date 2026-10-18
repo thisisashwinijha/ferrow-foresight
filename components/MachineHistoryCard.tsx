@@ -19,6 +19,7 @@ import {
 import { useMachineTelemetry } from '@/lib/simulator';
 import { getVibrationSeverity, getTemperatureSeverity } from '@/lib/risk';
 import { formatFailureMode, formatObservationTag } from '@/lib/lifecycle';
+import { generateMachineSummary } from '@/lib/copilotService';
 import {
   Activity,
   AlertTriangle,
@@ -153,31 +154,11 @@ export function MachineHistoryCard({
     return Number((totalHours / breakdowns.length).toFixed(1));
   }, [maintenanceLogs]);
 
-  // AI Summary synthesis
+  // AI Summary synthesis using copilotService
   const aiSummaryText = useMemo(() => {
-    if (machine.has_sensors) {
-      const openAlertCount = alerts.filter((a) => a.status === 'pending' || a.status === 'needs_review').length;
-      return `Telemetry shows steady ${vibSeverity === 'critical' || vibSeverity === 'alarm' ? 'abnormal' : 'normal'} operating parameters. Vibration is at ${currentVib} mm/s (baseline: ${machine.vibration_baseline} mm/s, ISO band: ${vibSeverity}), with temperature ${currentTemp}°C (${(currentTemp! - machine.temperature_baseline).toFixed(1)}°C delta). ${
-        openAlertCount > 0 ? `${openAlertCount} active triage alert(s) require review.` : 'No critical alerts active.'
-      } ${maintenanceLogs.length} historical service records logged with ${totalDowntimeHours}h cumulative downtime.`;
-    } else {
-      const obsCount = observations.length;
-      const lastObs = observations[0];
-      return `Legacy asset monitored via technician rounds and sensory capture. ${obsCount} observation(s) on record. ${
-        lastObs ? `Latest note on ${lastObs.created_at.slice(0, 10)} reported: "${lastObs.note}"` : 'Routine visual checks nominal.'
-      } ${maintenanceLogs.length} historical interventions recorded with MTTR of ${mttrHours}h.`;
-    }
-  }, [
-    machine,
-    vibSeverity,
-    currentVib,
-    currentTemp,
-    alerts,
-    maintenanceLogs,
-    totalDowntimeHours,
-    observations,
-    mttrHours,
-  ]);
+    const copilotResp = generateMachineSummary(machine.id, machine.plant_id || 'P-07');
+    return copilotResp.answer;
+  }, [machine]);
 
   return (
     <div className="space-y-6 max-w-[1400px] mx-auto pb-12">
