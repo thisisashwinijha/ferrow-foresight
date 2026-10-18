@@ -180,6 +180,20 @@ export interface KnowledgeLibrary {
   verified: boolean;
 }
 
+export type FailureMode =
+  | 'bearing_wear'
+  | 'belt_wear'
+  | 'misalignment'
+  | 'lubrication_failure'
+  | 'motor_overheating'
+  | 'hydraulic_leak'
+  | 'seal_failure'
+  | 'electrical_fault'
+  | 'pneumatic_leak'
+  | 'sensor_fault'
+  | 'unknown'
+  | 'none';
+
 export type AlertUrgency = 'P1' | 'P2' | 'P3' | 'none';
 export type AlertActionType = 'monitor' | 'inspect' | 'repair' | 'replace' | 'escalate';
 export type AlertStatus = 'pending' | 'approved' | 'rejected' | 'needs_review' | 'suppressed' | 'resolved';

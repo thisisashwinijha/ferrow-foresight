@@ -254,7 +254,6 @@ export async function triageService(input: TriageInput): Promise<TriageResult> {
       note: 'Changeover window aligned to shift schedule',
     },
     spares_check: sparesCheck,
-    spares_blocked: false,
     est_failure_cost_usd: machine.criticality === 'A' ? 24000 : 12000,
     est_intervention_cost_usd: 950,
     status: 'pending',
@@ -283,7 +282,6 @@ export async function triageService(input: TriageInput): Promise<TriageResult> {
     assigned_technician: guardrailOutcome.modifiedData.assigned_technician,
     loto_required: guardrailOutcome.modifiedData.loto_required,
     required_certifications: guardrailOutcome.modifiedData.required_certifications,
-    spares_blocked: guardrailOutcome.modifiedData.spares_blocked,
   };
 
   // 6. Save locally

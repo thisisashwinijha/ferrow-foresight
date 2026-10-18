@@ -212,7 +212,7 @@ export function PeopleDevelopmentView({
       );
       showToast('Knowledge entry marked as verified by veteran', 'success');
     } catch (err: any) {
-      showToast(err?.message || 'Error updating entry', 'error');
+      showToast(err?.message || 'Error updating entry', 'warning');
     } finally {
       setVerifyingId(null);
     }

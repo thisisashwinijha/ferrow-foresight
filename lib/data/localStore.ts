@@ -1,5 +1,5 @@
 import seedData from '@/data/seed_data.json';
-import { Alert, WorkOrder, Spares, Machine, Observation, MaintenanceLog, PmPlan } from '../types';
+import { Alert, WorkOrder, Spares, Machine, Observation, MaintenanceLog, PmPlan, KnowledgeLibrary } from '../types';
 import { getBaselineRiskScore, getBaselineHealthScore } from '../lifecycle';
 
 let inMemoryStore: any = null;
