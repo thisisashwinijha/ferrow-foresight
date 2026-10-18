@@ -236,7 +236,7 @@ export async function pmOptimiserService(plantId = 'P-07', clientIp?: string): P
         criticality: machine?.criticality || 'B',
         has_sensors: Boolean(machine?.has_sensors),
       },
-      task: task.task_name,
+      task: (task as any).task_name || task.task,
       due_date: task.due_date,
       interval_days: task.interval_days || 30,
       statutory_or_safety: false,

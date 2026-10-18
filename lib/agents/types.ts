@@ -1,4 +1,5 @@
 export type AgentType = 'triage' | 'pm_optimiser' | 'copilot' | 'knowledge' | 'interpreter';
+export type AgentName = AgentType;
 
 export type AgentProviderName = 'make' | 'direct' | 'direct_fallback' | 'remote' | 'cached';
 
@@ -20,6 +21,7 @@ export interface AgentExecuteOptions {
   clientIp?: string;
   forceProvider?: AgentProviderName;
   skipLive?: boolean; // e.g. for DEMO_MODE pre-seeded runs
+  bypassRateLimit?: boolean;
   ruleBasedFallback?: () => Promise<any> | any;
 }
 

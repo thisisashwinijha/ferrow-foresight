@@ -22,7 +22,7 @@ const CORS_HEADERS = {
 
 const agentRequestSchema = z.object({
   agent: z.enum(['triage', 'pm_optimiser', 'copilot', 'knowledge', 'interpreter']),
-  context: z.record(z.any()).optional().default({}),
+  context: z.record(z.string(), z.any()).optional().default({}),
   request_id: z.string().optional(),
   plant_id: z.string().optional(),
   machine_id: z.string().optional(),

@@ -155,7 +155,7 @@ export async function POST(
         failure_mode: result.workOrder.type || 'bearing_wear',
         symptoms: ['abnormal sound', 'wear'],
         findings: parseResult.data.closure_notes,
-        technician_id: result.workOrder.assigned_technician,
+        technician_id: result.workOrder.assigned_technician || undefined,
         plant_id: result.workOrder.plant_id || 'P-07',
       });
     } catch (kErr) {

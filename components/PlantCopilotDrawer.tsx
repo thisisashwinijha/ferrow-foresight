@@ -19,14 +19,14 @@ import {
   Layers,
   ChevronRight,
 } from 'lucide-react';
-import { CopilotResponse } from '@/lib/copilotService';
+import type { CopilotResponse } from '@/lib/copilotService';
 
 interface ChatMessage {
   id: string;
   sender: 'user' | 'copilot';
   text: string;
   cited_ids?: string[];
-  follow_up_suggestions?: [string, string];
+  follow_up_suggestions?: [string, string] | string[];
   timestamp: string;
 }
 

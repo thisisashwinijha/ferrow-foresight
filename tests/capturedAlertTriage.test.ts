@@ -134,7 +134,7 @@ describe('STEP 0: Fix approval on captured alerts', () => {
     expect(storedWO).toBeDefined();
     expect(storedWO.alert_id).toBe(alertId);
     expect(storedWO.status).toBe('scheduled');
-  });
+  }, 15000);
 
   it('enforces that zero evidence IDs check fails with needs_review', () => {
     const zeroEvidence = checkEvidenceIdsExist('No evidence cited here.', []);

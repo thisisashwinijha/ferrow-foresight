@@ -102,11 +102,10 @@ export default async function AgentConsolePage() {
   };
 
   const runLogs: AgentRunLogItem[] = rawRuns.map((r, idx) => {
+    const rawStep = (r as any).agent || r.step || '';
     const agentName =
-      agentNameMap[r.step] ||
-      agentNameMap[r.agent] ||
-      r.agent ||
-      r.step ||
+      agentNameMap[rawStep] ||
+      rawStep ||
       'Unknown Agent';
 
     const machineId =
@@ -134,8 +133,8 @@ export default async function AgentConsolePage() {
       agent: agentName,
       machine_id: machineId,
       latency_ms: r.latency_ms || 0,
-      schema_valid: r.input?.schema_valid !== false && r.status === 'success',
-      guardrail_pass: r.input?.guardrail_pass !== false && r.status === 'success',
+      schema_valid: Boolean(r.schema_valid ?? (r.input?.schema_valid !== false && !r.error)),
+      guardrail_pass: Boolean(r.guardrail_pass ?? (r.input?.guardrail_pass !== false && !r.error)),
       notes: note,
     };
   });

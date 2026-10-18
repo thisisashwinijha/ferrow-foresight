@@ -254,6 +254,7 @@ export interface Alert {
   decision_reason: string | null;
   source: string;
   prompt_version: string;
+  spares_blocked?: boolean;
 }
 
 export type WorkOrderStatus = 'raised' | 'approved' | 'scheduled' | 'loto_applied' | 'in_progress' | 'closed';

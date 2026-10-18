@@ -320,9 +320,7 @@ export function AlertDetailView({
   const canRerunTriage =
     role === 'Maintenance Planner' ||
     role === 'Plant Head' ||
-    role === 'Head of Plant Operations' ||
-    role === 'planner' ||
-    role === 'plant_head';
+    role === 'Head of Plant Operations';
 
   const handleRerunTriage = async () => {
     setIsRerunningTriage(true);

@@ -12,7 +12,7 @@ import {
 } from '@/lib/types';
 import { usePlantContext } from './PlantContext';
 import { useToast } from './ToastContext';
-import { PmOptimiserDecision, PmOptimiserResult } from '@/lib/pmOptimiserService';
+import type { PmOptimiserDecision, PmOptimiserResult } from '@/lib/pmOptimiserService';
 import {
   Calendar,
   CheckCircle2,

@@ -9,7 +9,7 @@ import {
   KnowledgeLibrary,
   Plant,
 } from '@/lib/types';
-import {
+import type {
   LearningCardPayload,
   SuggestedPairingPayload,
 } from '@/lib/knowledgeService';
@@ -838,10 +838,11 @@ export function PeopleDevelopmentView({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
             {learningCards.map((card) => {
-              const isAnswerShown = revealedAnswers[card.id];
+              const cardKey = card.id || card.title;
+              const isAnswerShown = revealedAnswers[cardKey];
               return (
                 <div
-                  key={card.id}
+                  key={cardKey}
                   className="bg-slate-950/60 border border-slate-800 rounded-xl p-5 space-y-4 flex flex-col justify-between"
                 >
                   <div className="space-y-3">
@@ -880,7 +881,7 @@ export function PeopleDevelopmentView({
                         Quick check question:
                       </span>
                       <button
-                        onClick={() => toggleAnswer(card.id)}
+                        onClick={() => toggleAnswer(cardKey)}
                         className="text-[11px] text-indigo-400 hover:text-indigo-300 underline font-medium"
                       >
                         {isAnswerShown ? 'Hide answer' : 'Reveal answer'}

@@ -19,7 +19,7 @@ import {
 import { useMachineTelemetry } from '@/lib/simulator';
 import { getVibrationSeverity, getTemperatureSeverity } from '@/lib/risk';
 import { formatFailureMode, formatObservationTag } from '@/lib/lifecycle';
-import { generateMachineSummary } from '@/lib/copilotService';
+import { generateMachineSummary } from '@/lib/machineSummary';
 import {
   Activity,
   AlertTriangle,

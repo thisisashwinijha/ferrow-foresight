@@ -26,7 +26,7 @@ export async function getAgentRuns(limit = 100): Promise<AgentRunRecord[]> {
   const combined: AgentRunRecord[] = [];
 
   for (const r of [...memoryRuns, ...(dbRuns || [])]) {
-    const key = r.id || `${r.agent || ''}-${r.step || ''}-${r.created_at || ''}-${r.latency_ms || ''}`;
+    const key = String(r.id || `${(r as any).agent || ''}-${r.step || ''}-${r.created_at || ''}-${r.latency_ms || ''}`);
     if (!seen.has(key)) {
       seen.add(key);
       combined.push(r);
@@ -91,7 +91,8 @@ export async function getAgentStatistics() {
   const runsByMappedId: Record<string, AgentRunRecord[]> = {};
 
   for (const r of runs) {
-    const mapped = mapStepToId[r.step] || mapStepToId[r.agent] || r.step || r.agent;
+    const agentVal = (r as any).agent;
+    const mapped = mapStepToId[r.step] || (agentVal && mapStepToId[agentVal]) || r.step || agentVal;
     if (!runsByMappedId[mapped]) {
       runsByMappedId[mapped] = [];
     }
@@ -137,10 +138,10 @@ export async function getLastAgentErrors(limit = 5): Promise<
   }> = [];
 
   for (const r of runs) {
-    if (r.error || r.status === 'failure') {
+    if (r.error || (r as any).status === 'failure') {
       errors.push({
-        id: r.id || `ERR-${errors.length + 1}`,
-        agent: r.agent || 'Agent',
+        id: String(r.id || `ERR-${errors.length + 1}`),
+        agent: (r as any).agent || r.step || 'Agent',
         step: r.step || 'Execution',
         error: r.error || 'Execution failed',
         created_at: r.created_at || new Date().toISOString(),
@@ -163,8 +164,8 @@ export async function getLastMakeRun(): Promise<{
       r.input?.provider === 'make' ||
       r.output?.provider === 'make' ||
       r.model === 'make-webhook' ||
-      r.agent === 'make';
-    if (isMake && r.status === 'success') {
+      (r as any).agent === 'make';
+    if (isMake && !r.error) {
       return {
         timestamp: r.created_at || null,
         status: 'Operational',
