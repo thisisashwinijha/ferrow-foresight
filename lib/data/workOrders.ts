@@ -6,7 +6,7 @@ export function getWorkOrdersSync(plantId?: string, lineId?: string): WorkOrder[
   const data = getSeedData();
   const orders: WorkOrder[] = (data.work_orders as unknown as WorkOrder[]) || [];
   return orders.filter((wo) => {
-    if (plantId && wo.plant_id !== plantId) return false;
+    if (plantId && plantId !== 'all' && wo.plant_id !== plantId) return false;
     if (lineId && lineId !== 'all') {
       const machine = getMachineByIdSync(wo.machine_id);
       if (machine?.line_id !== lineId) return false;

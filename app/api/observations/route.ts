@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     const clientIp = getClientIpFromHeaders(request.headers);
     const result = await triageService({
       ...parseResult.data,
-      forceLive: true,
+      forceLive: process.env.AGENT_PROVIDER === 'cached' ? false : true,
       clientIp,
     });
 

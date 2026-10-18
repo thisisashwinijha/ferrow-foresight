@@ -4,7 +4,7 @@ import { Spares } from '../types';
 export function getSparesSync(plantId?: string, lineId?: string): Spares[] {
   const data = getSeedData();
   const spares: Spares[] = data.spares || [];
-  if (!plantId) return spares;
+  if (!plantId || plantId === 'all') return spares;
   return spares.filter((s) => s.plant_id === plantId);
 }
 

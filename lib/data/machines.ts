@@ -5,7 +5,7 @@ export function getMachinesSync(plantId?: string, lineId?: string): Machine[] {
   const data = getSeedData();
   const machines: Machine[] = (data.machines as unknown as Machine[]) || [];
   return machines.filter((m) => {
-    if (plantId && m.plant_id !== plantId) return false;
+    if (plantId && plantId !== 'all' && m.plant_id !== plantId) return false;
     if (lineId && lineId !== 'all' && m.line_id !== lineId) return false;
     return true;
   });

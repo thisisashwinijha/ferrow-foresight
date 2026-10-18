@@ -9,7 +9,7 @@ export function getAlertsSync(plantId?: string, lineId?: string): Alert[] {
   return alerts.filter((alert) => {
     const machine = getMachineByIdSync(alert.machine_id);
     const alertPlant = alert.plant_id || machine?.plant_id;
-    if (plantId && alertPlant !== plantId) return false;
+    if (plantId && plantId !== 'all' && alertPlant !== plantId) return false;
 
     if (lineId && lineId !== 'all') {
       const machineLine = machine?.line_id;

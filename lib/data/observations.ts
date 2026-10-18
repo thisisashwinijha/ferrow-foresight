@@ -10,7 +10,7 @@ export function getObservationsSync(
   const data = getSeedData();
   const obs: Observation[] = data.observations || [];
   return obs.filter((o) => {
-    if (plantId && o.plant_id !== plantId) return false;
+    if (plantId && plantId !== 'all' && o.plant_id !== plantId) return false;
     if (machineId && o.machine_id !== machineId) return false;
     if (lineId && lineId !== 'all') {
       const machine = getMachineByIdSync(o.machine_id);

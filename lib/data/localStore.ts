@@ -63,7 +63,9 @@ export function saveLocalStoreData(newData: any): void {
   if (fs && path) {
     try {
       const fullPath = path.resolve(process.cwd(), LOCAL_STATE_PATH);
-      fs.writeFileSync(fullPath, JSON.stringify(newData, null, 2), 'utf-8');
+      const tempPath = `${fullPath}.${process.pid}.${Date.now()}.tmp`;
+      fs.writeFileSync(tempPath, JSON.stringify(newData, null, 2), 'utf-8');
+      fs.renameSync(tempPath, fullPath);
     } catch (e) {
       console.warn('Could not write data/local_state.json:', e);
     }

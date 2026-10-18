@@ -5,7 +5,7 @@ export function getLinesSync(plantId?: string, lineId?: string): Line[] {
   const data = getSeedData();
   const lines: Line[] = data.lines || [];
   return lines.filter((l) => {
-    if (plantId && l.plant_id !== plantId) return false;
+    if (plantId && plantId !== 'all' && l.plant_id !== plantId) return false;
     if (lineId && lineId !== 'all' && l.id !== lineId) return false;
     return true;
   });

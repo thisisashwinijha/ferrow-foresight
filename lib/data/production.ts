@@ -7,7 +7,7 @@ export function getProductionScheduleSync(plantId?: string, lineId?: string): Pr
   const schedule: ProductionSchedule[] = (data.production_schedule as unknown as ProductionSchedule[]) || [];
   return schedule.filter((s) => {
     if (lineId && lineId !== 'all' && s.line_id !== lineId) return false;
-    if (plantId) {
+    if (plantId && plantId !== 'all') {
       const plantLines = new Set(getLinesSync(plantId).map((l) => l.id));
       if (!plantLines.has(s.line_id)) return false;
     }

@@ -124,11 +124,64 @@ async function runScenario7(page: any, vpName: string) {
 async function runScenario8(page: any, vpName: string) {
   console.log(`  [${vpName}] S8: New capture 5-step flow...`);
   await page.goto(`${BASE_URL}/capture`, { waitUntil: 'domcontentloaded' });
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(600);
 
+  // 1. Verify 5-step capture flow step 1 is present
+  const step1 = await page.$('[data-testid="capture-step-1"], [data-testid="step-technician"]');
   const text = await page.innerText('body');
-  if (!text.includes('Who is observing') && !text.includes('Select technician') && !text.includes('Technician')) {
+  if (!step1 && !text.includes('Who are you') && !text.includes('Select technician') && !text.includes('Technician')) {
     throw new Error('S8: Expected 5-step capture flow step 1');
+  }
+
+  // 2. Select technician from step 1
+  const techOptions = await page.$$('[data-testid="technician-option"]');
+  if (techOptions.length === 0 && !text.includes('technicians at this plant')) {
+    throw new Error('S8: Expected technician options in step 1');
+  }
+  if (techOptions.length > 0) {
+    await techOptions[0].click();
+    await page.waitForTimeout(200);
+  }
+
+  // 3. Select machine in step 2
+  const machineOptions = await page.$$('[data-testid="machine-option"]');
+  if (machineOptions.length > 0) {
+    await machineOptions[0].click();
+    await page.waitForTimeout(200);
+  }
+
+  // 4. Select symptom tag in step 3
+  const symptomBtns = await page.$$('[data-testid="symptom-tag-button"]');
+  if (symptomBtns.length > 0) {
+    await symptomBtns[0].click();
+    await page.waitForTimeout(200);
+  }
+
+  // 5. Enter typed note in step 4
+  const noteArea = await page.$('[data-testid="note-textarea"], textarea');
+  if (noteArea) {
+    await noteArea.fill('Loud abnormal grinding vibration observed near motor housing.');
+    await page.waitForTimeout(200);
+  }
+
+  // 6. Submit observation & cached triage in step 5
+  const submitBtn = await page.$('[data-testid="submit-observation-button"], button[type="submit"]');
+  if (submitBtn) {
+    await submitBtn.click();
+
+    // Wait for triage result panel
+    await page.waitForSelector('[data-testid="capture-success-panel"], [data-testid="open-created-alert-button"], a[href^="/alerts/AL-"]', { timeout: 20000 });
+
+    // 7. Verify created alert opens
+    const openAlertBtn = await page.$('[data-testid="open-created-alert-button"], a[href^="/alerts/AL-"]');
+    if (openAlertBtn) {
+      await openAlertBtn.click();
+      await page.waitForTimeout(800);
+      const alertBody = await page.innerText('body');
+      if (!alertBody.includes('AL-') && !page.url().includes('/alerts/')) {
+        throw new Error('S8: Created alert did not open properly');
+      }
+    }
   }
 }
 

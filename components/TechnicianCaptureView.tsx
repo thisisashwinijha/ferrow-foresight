@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -143,11 +143,13 @@ export function TechnicianCaptureView({
   });
 
   // When not searching, order legacy machines first, then sensor machines
-  const orderedMachines = searchQuery.trim()
-    ? filteredMachines
-    : filterLegacyOnly
-    ? legacyMachines
-    : [...legacyMachines, ...sensorMachines];
+  const orderedMachines = useMemo(() => {
+    return searchQuery.trim()
+      ? filteredMachines
+      : filterLegacyOnly
+      ? legacyMachines
+      : [...legacyMachines, ...sensorMachines];
+  }, [searchQuery, filteredMachines, filterLegacyOnly, legacyMachines, sensorMachines]);
 
   // Set default machine selection
   useEffect(() => {
@@ -379,7 +381,7 @@ export function TechnicianCaptureView({
 
       {/* SUCCESS CONFIRMATION MODAL / PANEL */}
       {triageResult ? (
-        <div className="bg-surface rounded-card p-6 border border-line/30 space-y-5 text-center shadow-xs">
+        <div data-testid="capture-success-panel" className="bg-surface rounded-card p-6 border border-line/30 space-y-5 text-center shadow-xs">
           <div className="w-12 h-12 rounded-full bg-ok/10 text-ok flex items-center justify-center mx-auto">
             <CheckCircle2 className="w-6 h-6" />
           </div>
@@ -438,6 +440,7 @@ export function TechnicianCaptureView({
             {triageResult.alert && (
               <Link
                 href={`/alerts/${triageResult.alert.id}`}
+                data-testid="open-created-alert-button"
                 className="w-full sm:flex-1 py-2.5 px-4 rounded-btn bg-ink text-surface text-xs font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-xs"
               >
                 <span>Open alert {triageResult.alert.id}</span>
@@ -457,14 +460,14 @@ export function TechnicianCaptureView({
       ) : (
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* SECTION 1: WHO ARE YOU? */}
-          <div className="bg-surface rounded-card p-5 border border-line/30 space-y-3 shadow-xs">
+          <div data-testid="capture-step-1" className="bg-surface rounded-card p-5 border border-line/30 space-y-3 shadow-xs">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-5 h-5 rounded-full bg-ink text-surface text-[11px] font-semibold flex items-center justify-center">
                   1
                 </span>
                 <h2 className="text-sm font-semibold text-ink">
-                  Who are you?
+                  Who are you? (Select technician)
                 </h2>
               </div>
               <span className="text-[11px] text-ink-muted">
@@ -483,6 +486,8 @@ export function TechnicianCaptureView({
                   <button
                     key={tech.id}
                     type="button"
+                    data-testid="technician-option"
+                    data-tech-id={tech.id}
                     onClick={() => setSelectedTechnicianId(tech.id)}
                     className={`p-3 rounded-card border text-left transition-all ${
                       isSelected
@@ -517,7 +522,7 @@ export function TechnicianCaptureView({
           </div>
 
           {/* SECTION 2: MACHINE SELECTION */}
-          <div className="bg-surface rounded-card p-5 border border-line/30 space-y-3 shadow-xs">
+          <div data-testid="capture-step-2" className="bg-surface rounded-card p-5 border border-line/30 space-y-3 shadow-xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <span className="w-5 h-5 rounded-full bg-ink text-surface text-[11px] font-semibold flex items-center justify-center">
@@ -579,6 +584,8 @@ export function TechnicianCaptureView({
                   <button
                     key={m.id}
                     type="button"
+                    data-testid="machine-option"
+                    data-machine-id={m.id}
                     onClick={() => setSelectedMachineId(m.id)}
                     className={`text-left p-3 rounded-card border transition-all flex items-center justify-between gap-3 ${
                       isSelected
@@ -627,7 +634,7 @@ export function TechnicianCaptureView({
           </div>
 
           {/* SECTION 3: SYMPTOMS (LARGE TAG BUTTONS) */}
-          <div className="bg-surface rounded-card p-5 border border-line/30 space-y-4 shadow-xs">
+          <div data-testid="capture-step-3" className="bg-surface rounded-card p-5 border border-line/30 space-y-4 shadow-xs">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-5 h-5 rounded-full bg-ink text-surface text-[11px] font-semibold flex items-center justify-center">
@@ -665,6 +672,8 @@ export function TechnicianCaptureView({
                           <button
                             key={opt.id}
                             type="button"
+                            data-testid="symptom-tag-button"
+                            data-symptom-id={opt.id}
                             onClick={() => toggleSymptom(opt.id)}
                             className={`min-h-[44px] p-3 rounded-btn border text-left transition-all flex items-center justify-between gap-2 ${
                               isChecked
@@ -676,7 +685,7 @@ export function TechnicianCaptureView({
                             <span
                               className={`w-4 h-4 rounded-chip flex items-center justify-center shrink-0 border ${
                                 isChecked
-                                  ? 'bg-surface text-ink border-surface'
+                                    ? 'bg-surface text-ink border-surface'
                                   : 'border-line/40 bg-surface-2'
                               }`}
                             >
@@ -693,7 +702,7 @@ export function TechnicianCaptureView({
           </div>
 
           {/* SECTION 4: NOTE (VOICE OR TYPED) */}
-          <div className="bg-surface rounded-card p-5 border border-line/30 space-y-4 shadow-xs">
+          <div data-testid="capture-step-4" className="bg-surface rounded-card p-5 border border-line/30 space-y-4 shadow-xs">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-5 h-5 rounded-full bg-ink text-surface text-[11px] font-semibold flex items-center justify-center">
@@ -774,6 +783,7 @@ export function TechnicianCaptureView({
                 Notes & Field Description <span className="text-danger">*</span>
               </label>
               <textarea
+                data-testid="note-textarea"
                 required
                 rows={3}
                 value={note}
@@ -793,9 +803,10 @@ export function TechnicianCaptureView({
           </div>
 
           {/* SECTION 5: SUBMIT */}
-          <div className="pt-2">
+          <div data-testid="capture-step-5" className="pt-2">
             <button
               type="submit"
+              data-testid="submit-observation-button"
               disabled={submitting || !selectedMachineId || selectedSymptoms.length === 0 || !note.trim()}
               className="w-full py-3.5 px-5 rounded-btn bg-ink text-surface text-xs font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
             >

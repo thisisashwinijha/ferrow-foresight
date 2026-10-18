@@ -7,9 +7,9 @@ export function getPmPlansSync(plantId?: string, lineId?: string, machineId?: st
   const plans: PmPlan[] = (data.pm_plan as unknown as PmPlan[]) || [];
   return plans.filter((p) => {
     if (machineId && p.machine_id !== machineId) return false;
-    if (plantId || (lineId && lineId !== 'all')) {
+    if ((plantId && plantId !== 'all') || (lineId && lineId !== 'all')) {
       const machine = getMachineByIdSync(p.machine_id);
-      if (plantId && machine?.plant_id !== plantId) return false;
+      if (plantId && plantId !== 'all' && machine?.plant_id !== plantId) return false;
       if (lineId && lineId !== 'all' && machine?.line_id !== lineId) return false;
     }
     return true;

@@ -13,9 +13,9 @@ export function getMaintenanceLogsSync(
   return logs.filter((log) => {
     if (machineId && log.machine_id !== machineId) return false;
 
-    if (plantId || (lineId && lineId !== 'all')) {
+    if ((plantId && plantId !== 'all') || (lineId && lineId !== 'all')) {
       const machine = getMachineByIdSync(log.machine_id);
-      if (plantId && machine?.plant_id !== plantId) return false;
+      if (plantId && plantId !== 'all' && machine?.plant_id !== plantId) return false;
       if (lineId && lineId !== 'all' && machine?.line_id !== lineId) return false;
     }
 

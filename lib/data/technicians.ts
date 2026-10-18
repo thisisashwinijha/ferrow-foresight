@@ -4,7 +4,7 @@ import { Technician, Certification, TechnicianSkill } from '../types';
 export function getTechniciansSync(plantId?: string, lineId?: string): Technician[] {
   const data = getSeedData();
   const techs: Technician[] = (data.technicians as unknown as Technician[]) || [];
-  if (!plantId) return techs;
+  if (!plantId || plantId === 'all') return techs;
   return techs.filter((t) => t.plant_id === plantId);
 }
 
