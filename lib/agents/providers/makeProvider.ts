@@ -16,7 +16,7 @@ export interface ProviderCallResult {
  */
 export async function callMakeProvider(
   options: AgentExecuteOptions,
-  timeoutMs = 25000
+  timeoutMs = 6000
 ): Promise<ProviderCallResult> {
   const webhookUrl = process.env.MAKE_WEBHOOK_URL;
   const authToken = process.env.MAKE_AUTH_TOKEN || '';
