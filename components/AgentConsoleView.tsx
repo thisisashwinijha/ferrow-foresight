@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import {
   Cpu,
   Bot,
@@ -105,7 +106,11 @@ export function AgentConsoleView({
 }: AgentConsoleViewProps) {
   const { showToast } = useToast();
 
-  const [activeTab, setActiveTab] = useState<'agents' | 'logs' | 'scorecard' | 'prompts'>('agents');
+  const searchParams = useSearchParams();
+  const requestedTab = (searchParams?.get('tab') as any) || 'agents';
+  const [activeTab, setActiveTab] = useState<'agents' | 'logs' | 'scorecard' | 'prompts'>(
+    ['agents', 'logs', 'scorecard', 'prompts'].includes(requestedTab) ? requestedTab : 'agents'
+  );
   const [selectedPromptIndex, setSelectedPromptIndex] = useState<number>(0);
   const [selectedAgentFilter, setSelectedAgentFilter] = useState<string>('all');
   const [searchLogQuery, setSearchLogQuery] = useState<string>('');
