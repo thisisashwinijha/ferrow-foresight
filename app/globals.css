@@ -4,31 +4,57 @@
 
 /* Day shift (light mode) as default on :root */
 :root {
-  --canvas: #F7F8F9;
+  --canvas: #F5F6F8;
   --surface: #FFFFFF;
-  --surface-2: #F0F2F4;
-  --ink: #181B1E;
-  --ink-muted: #656F7D;
-  --line: #E2E5E8;
-  --critical: #C4161C;
-  --high: #D9711C;
-  --medium: #B89600;
-  --ok: #2F7A4E;
-  --agent: #3A5DAE;
+  --surface-2: #F8F9FA;
+  --ink: #1E252B;
+  --ink-muted: #4A5560;
+  --line: #E3E6EA;
+  --critical: #B42318;
+  --critical-bg: #FEE4E2;
+  --critical-border: #FECDCA;
+  --warning: #93370D;
+  --warning-bg: #FEF0C7;
+  --warning-border: #FEDF89;
+  --high: #93370D;
+  --high-bg: #FEF0C7;
+  --high-border: #FEDF89;
+  --medium: #93370D;
+  --medium-bg: #FEF0C7;
+  --medium-border: #FEDF89;
+  --ok: #05603A;
+  --ok-bg: #D1FADF;
+  --ok-border: #A6F4C5;
+  --agent: #3538CD;
+  --agent-bg: #E0EAFF;
+  --agent-border: #C7D7FE;
 }
 
 [data-theme="light"] {
-  --canvas: #F7F8F9;
+  --canvas: #F5F6F8;
   --surface: #FFFFFF;
-  --surface-2: #F0F2F4;
-  --ink: #181B1E;
-  --ink-muted: #656F7D;
-  --line: #E2E5E8;
-  --critical: #C4161C;
-  --high: #D9711C;
-  --medium: #B89600;
-  --ok: #2F7A4E;
-  --agent: #3A5DAE;
+  --surface-2: #F8F9FA;
+  --ink: #1E252B;
+  --ink-muted: #4A5560;
+  --line: #E3E6EA;
+  --critical: #B42318;
+  --critical-bg: #FEE4E2;
+  --critical-border: #FECDCA;
+  --warning: #93370D;
+  --warning-bg: #FEF0C7;
+  --warning-border: #FEDF89;
+  --high: #93370D;
+  --high-bg: #FEF0C7;
+  --high-border: #FEDF89;
+  --medium: #93370D;
+  --medium-bg: #FEF0C7;
+  --medium-border: #FEDF89;
+  --ok: #05603A;
+  --ok-bg: #D1FADF;
+  --ok-border: #A6F4C5;
+  --agent: #3538CD;
+  --agent-bg: #E0EAFF;
+  --agent-border: #C7D7FE;
 }
 
 /* Night shift on [data-theme="dark"] */
@@ -39,11 +65,24 @@
   --ink: #EDF0F2;
   --ink-muted: #8B949E;
   --line: #2D3339;
-  --critical: #E5484D;
-  --high: #F0883E;
-  --medium: #D9B310;
-  --ok: #4CAF78;
-  --agent: #7C9BE8;
+  --critical: #FDA29B;
+  --critical-bg: rgba(180, 35, 24, 0.25);
+  --critical-border: rgba(240, 68, 56, 0.35);
+  --warning: #FEC84B;
+  --warning-bg: rgba(147, 55, 13, 0.25);
+  --warning-border: rgba(247, 144, 9, 0.35);
+  --high: #FEC84B;
+  --high-bg: rgba(147, 55, 13, 0.25);
+  --high-border: rgba(247, 144, 9, 0.35);
+  --medium: #FEC84B;
+  --medium-bg: rgba(181, 71, 8, 0.25);
+  --medium-border: rgba(217, 179, 16, 0.35);
+  --ok: #6CE9A6;
+  --ok-bg: rgba(5, 96, 58, 0.25);
+  --ok-border: rgba(50, 213, 131, 0.35);
+  --agent: #A4BCFD;
+  --agent-bg: rgba(53, 56, 205, 0.25);
+  --agent-border: rgba(124, 155, 232, 0.35);
 }
 
 * {

@@ -25,7 +25,7 @@ export default async function MaintenancePlanningPage({
     getPlantById(activePlantId),
     getLines(activePlantId),
     getAlerts(activePlantId, activeLineId),
-    pmOptimiserService(activePlantId),
+    pmOptimiserService(activePlantId).catch(() => null),
   ]);
 
   return (

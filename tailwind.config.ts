@@ -20,11 +20,36 @@ const config: Config = {
           muted: "var(--ink-muted)",
         },
         line: "var(--line)",
-        critical: "var(--critical)",
-        high: "var(--high)",
-        medium: "var(--medium)",
-        ok: "var(--ok)",
-        agent: "var(--agent)",
+        critical: {
+          DEFAULT: "var(--critical)",
+          bg: "var(--critical-bg)",
+          border: "var(--critical-border)",
+        },
+        warning: {
+          DEFAULT: "var(--warning)",
+          bg: "var(--warning-bg)",
+          border: "var(--warning-border)",
+        },
+        high: {
+          DEFAULT: "var(--high)",
+          bg: "var(--high-bg)",
+          border: "var(--high-border)",
+        },
+        medium: {
+          DEFAULT: "var(--medium)",
+          bg: "var(--medium-bg)",
+          border: "var(--medium-border)",
+        },
+        ok: {
+          DEFAULT: "var(--ok)",
+          bg: "var(--ok-bg)",
+          border: "var(--ok-border)",
+        },
+        agent: {
+          DEFAULT: "var(--agent)",
+          bg: "var(--agent-bg)",
+          border: "var(--agent-border)",
+        },
       },
       fontFamily: {
         sans: ["'IBM Plex Sans'", "system-ui", "-apple-system", "sans-serif"],
