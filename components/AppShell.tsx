@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { TopBar } from './TopBar';
 import { Sidebar } from './Sidebar';
+import { DatabaseBanner } from './DatabaseBanner';
 import { Plant, Machine } from '@/lib/types';
 
 interface AppShellProps {
@@ -21,6 +22,7 @@ export function AppShell({ children, plants, machines }: AppShellProps) {
         machines={machines}
         onToggleSidebar={() => setMobileMenuOpen(true)}
       />
+      <DatabaseBanner />
       <div className="flex-1 flex overflow-hidden">
         <Sidebar
           isOpenMobile={mobileMenuOpen}

@@ -18,6 +18,7 @@ import {
   ChevronRight,
   ChevronLeft,
   X,
+  AlertTriangle,
 } from 'lucide-react';
 import { usePlantContext } from './PlantContext';
 
@@ -43,6 +44,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { name: 'Control room', href: '/', icon: SlidersHorizontal },
       { name: 'Network', href: '/network', icon: Globe },
+      { name: 'Alerts', href: '/alerts', icon: AlertTriangle },
       { name: 'Work orders', href: '/work-orders', icon: ClipboardList },
       { name: 'Capture', href: '/capture', icon: Smartphone },
     ],

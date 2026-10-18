@@ -5,11 +5,11 @@ import React, { createContext, useContext, useState, useCallback } from 'react';
 interface Toast {
   id: string;
   message: string;
-  type?: 'info' | 'success' | 'alert';
+  type?: 'info' | 'success' | 'alert' | 'warning';
 }
 
 interface ToastContextType {
-  showToast: (message: string, type?: 'info' | 'success' | 'alert') => void;
+  showToast: (message: string, type?: 'info' | 'success' | 'alert' | 'warning') => void;
 }
 
 const ToastContext = createContext<ToastContextType>({
@@ -19,7 +19,7 @@ const ToastContext = createContext<ToastContextType>({
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const showToast = useCallback((message: string, type: 'info' | 'success' | 'alert' = 'info') => {
+  const showToast = useCallback((message: string, type: 'info' | 'success' | 'alert' | 'warning' = 'info') => {
     const id = Math.random().toString(36).substring(2, 9);
     setToasts((prev) => [...prev, { id, message, type }]);
 
@@ -37,7 +37,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             key={toast.id}
             className={`pointer-events-auto px-3 py-2 text-xs font-medium rounded-panel border shadow-lg transition-all animate-in fade-in slide-in-from-bottom-2 ${
               toast.type === 'alert'
-                ? 'bg-critical text-white border-critical'
+                ? 'bg-danger text-white border-danger'
+                : toast.type === 'warning'
+                ? 'bg-warning text-white border-warning'
                 : toast.type === 'success'
                 ? 'bg-ok text-white border-ok'
                 : 'bg-surface text-ink border-line'

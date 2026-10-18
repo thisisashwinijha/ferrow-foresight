@@ -1,7 +1,7 @@
-import { getSeedData } from './db';
+import { getSeedData, queryWithFallback } from './db';
 import { SensorReading } from '../types';
 
-export function getSensorReadingsForMachine(machineId: string, limit = 14): SensorReading[] {
+export function getSensorReadingsForMachineSync(machineId: string, limit = 14): SensorReading[] {
   const data = getSeedData();
   const readings: SensorReading[] = (data.sensor_readings as unknown as SensorReading[]) || [];
   return readings
@@ -10,7 +10,7 @@ export function getSensorReadingsForMachine(machineId: string, limit = 14): Sens
     .slice(-limit);
 }
 
-export function getLatestReadingsMap(machineIds: string[]): Record<string, SensorReading> {
+export function getLatestReadingsMapSync(machineIds: string[]): Record<string, SensorReading> {
   const idSet = new Set(machineIds);
   const data = getSeedData();
   const readings: SensorReading[] = (data.sensor_readings as unknown as SensorReading[]) || [];
@@ -24,4 +24,30 @@ export function getLatestReadingsMap(machineIds: string[]): Record<string, Senso
   }
 
   return map;
+}
+
+export async function getSensorReadings(
+  plantId?: string,
+  lineId?: string,
+  machineId?: string,
+  limit = 14
+): Promise<SensorReading[]> {
+  return queryWithFallback<SensorReading[]>(
+    async (client) => {
+      let query = client.from('sensor_readings').select('*');
+      if (machineId) {
+        query = query.eq('machine_id', machineId);
+      }
+      const { data, error } = await query.order('date', { ascending: true });
+      if (error || !data) return { data: null, error };
+      const slice = (data as SensorReading[]).slice(-limit);
+      return { data: slice, error: null };
+    },
+    () => (machineId ? getSensorReadingsForMachineSync(machineId, limit) : []),
+    'getSensorReadings'
+  );
+}
+
+export async function getSensorReadingsForMachine(machineId: string, limit = 14): Promise<SensorReading[]> {
+  return getSensorReadings(undefined, undefined, machineId, limit);
 }

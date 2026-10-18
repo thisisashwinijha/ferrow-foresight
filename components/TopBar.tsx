@@ -49,8 +49,18 @@ export function TopBar({ plants, machines, onToggleSidebar }: TopBarProps) {
   const selectedPlant = plants.find((p) => p.id === plantId);
   const activeTz = PLANT_TIMEZONES[plantId] || 'UTC';
 
-  const handleResetDemo = () => {
-    showToast('Demo state restored to seed baseline', 'info');
+  const handleResetDemo = async () => {
+    try {
+      const res = await fetch('/api/demo/reset', { method: 'POST' });
+      if (res.ok) {
+        showToast('Demo state restored to seed baseline', 'info');
+        router.refresh();
+      } else {
+        showToast('Failed to reset demo state', 'warning');
+      }
+    } catch {
+      showToast('Error resetting demo state', 'warning');
+    }
   };
 
   const handleSelectPlant = (pId: string, status: string) => {

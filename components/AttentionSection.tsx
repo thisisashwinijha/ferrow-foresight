@@ -42,15 +42,13 @@ export function AttentionSection({ alerts, plant, onSelectAlert }: AttentionSect
         </div>
 
         {totalPending > 0 && (
-          <button
-            onClick={() => {
-              if (attentionAlerts[0]) onSelectAlert(attentionAlerts[0]);
-            }}
+          <Link
+            href={`/alerts?plant=${plantId || 'P-07'}`}
             className="text-xs font-medium text-ink-muted hover:text-ink transition-colors flex items-center gap-1"
           >
             <span>View all ({totalPending})</span>
             <ArrowRight className="w-3 h-3" />
-          </button>
+          </Link>
         )}
       </div>
 

@@ -2,11 +2,11 @@
 
 import React, { useState, useMemo } from 'react';
 import { usePlantContext } from './PlantContext';
-import { getPlantById } from '@/lib/data/plants';
-import { getLines } from '@/lib/data/lines';
-import { getMachines } from '@/lib/data/machines';
-import { getAlerts } from '@/lib/data/alerts';
-import { getLatestKpiSnapshot, getPreviousKpiSnapshot } from '@/lib/data/kpis';
+import { getPlantByIdSync } from '@/lib/data/plants';
+import { getLinesSync } from '@/lib/data/lines';
+import { getMachinesSync } from '@/lib/data/machines';
+import { getAlertsSync } from '@/lib/data/alerts';
+import { getLatestKpiSnapshotSync, getPreviousKpiSnapshotSync } from '@/lib/data/kpis';
 import { KpiStrip } from './KpiStrip';
 import { LineMimic } from './LineMimic';
 import { LiveAlertFeed } from './LiveAlertFeed';
@@ -18,12 +18,12 @@ export function ControlRoomView() {
   const { plantId, lineId, setLineId } = usePlantContext();
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
 
-  const plant = useMemo(() => getPlantById(plantId), [plantId]);
-  const lines = useMemo(() => getLines(plantId), [plantId]);
-  const machines = useMemo(() => getMachines(plantId, lineId), [plantId, lineId]);
-  const alerts = useMemo(() => getAlerts(plantId, lineId), [plantId, lineId]);
-  const currentKpi = useMemo(() => getLatestKpiSnapshot(plantId), [plantId]);
-  const previousKpi = useMemo(() => getPreviousKpiSnapshot(plantId), [plantId]);
+  const plant = useMemo(() => getPlantByIdSync(plantId), [plantId]);
+  const lines = useMemo(() => getLinesSync(plantId), [plantId]);
+  const machines = useMemo(() => getMachinesSync(plantId, lineId), [plantId, lineId]);
+  const alerts = useMemo(() => getAlertsSync(plantId, lineId), [plantId, lineId]);
+  const currentKpi = useMemo(() => getLatestKpiSnapshotSync(plantId), [plantId]);
+  const previousKpi = useMemo(() => getPreviousKpiSnapshotSync(plantId), [plantId]);
 
   // Filter lines to display in mimic based on active filter
   const displayedLines = useMemo(() => {

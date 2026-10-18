@@ -16,13 +16,13 @@ export const metadata: Metadata = {
   description: 'Condition-based and risk-based maintenance operating system for packaging and processing',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const plants = getPlants();
-  const machines = getAllMachines();
+  const plants = await getPlants();
+  const machines = await getAllMachines();
 
   return (
     <html

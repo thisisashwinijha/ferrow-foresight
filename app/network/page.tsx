@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { usePlantContext } from '@/components/PlantContext';
 import { Plant, PlantStatus } from '@/lib/types';
-import { getPlants } from '@/lib/data/plants';
+import { getPlantsSync } from '@/lib/data/plants';
 
 type SortField =
   | 'id'
@@ -25,7 +25,7 @@ export default function NetworkPage() {
   const router = useRouter();
   const { setPlantId } = usePlantContext();
 
-  const plants = useMemo(() => getPlants(), []);
+  const plants = useMemo(() => getPlantsSync(), []);
 
   const [sortField, setSortField] = useState<SortField>('status');
   const [sortAsc, setSortAsc] = useState<boolean>(true);
