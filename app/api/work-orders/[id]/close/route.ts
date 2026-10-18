@@ -137,6 +137,7 @@ export async function POST(
       revalidatePath('/work-orders');
       revalidatePath(`/work-orders/${woId}`);
       revalidatePath('/alerts');
+      revalidatePath('/people');
       if (workOrder.machine_id) {
         revalidatePath(`/machines/${workOrder.machine_id}`);
       }
@@ -144,11 +145,29 @@ export async function POST(
       console.warn('revalidatePath warning in close route:', e);
     }
 
+    // Trigger Knowledge Agent to extract institutional knowledge
+    let knowledgeResult = null;
+    try {
+      const { knowledgeService } = await import('@/lib/knowledgeService');
+      knowledgeResult = await knowledgeService({
+        work_order_id: woId,
+        machine_type: (result.machine as any)?.type || 'conveyor_drive',
+        failure_mode: result.workOrder.type || 'bearing_wear',
+        symptoms: ['abnormal sound', 'wear'],
+        findings: parseResult.data.closure_notes,
+        technician_id: result.workOrder.assigned_technician,
+        plant_id: result.workOrder.plant_id || 'P-07',
+      });
+    } catch (kErr) {
+      console.warn('Knowledge agent trigger error on closure:', kErr);
+    }
+
     return NextResponse.json({
       success: true,
       workOrder: result.workOrder,
       machine: result.machine,
       log: result.log,
+      knowledge: knowledgeResult,
       message: `Work order ${woId} successfully closed. Machine restored to nominal.`,
     });
   } catch (err: any) {

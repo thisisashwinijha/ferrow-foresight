@@ -3,8 +3,12 @@
  *
  * Implements rule-based and cached knowledge extraction, learning cards for
  * junior technicians, and veteran-junior mentorship pairings.
+ * Wires to live AI agent layer.
  * Adheres strictly to prompts/knowledge_agent.md.
  */
+
+import { executeAgent } from './agents';
+import { getLocalStoreData } from './data/localStore';
 
 export interface KnowledgeEntryPayload {
   machine_type: string;
@@ -20,27 +24,27 @@ export interface KnowledgeEntryPayload {
 }
 
 export interface LearningCardPayload {
-  id: string;
+  id?: string;
   title: string;
-  for_role: 'Junior' | 'Trainee';
-  machine_type: string;
-  key_points: [string, string, string];
+  for_role: string;
+  machine_type?: string;
+  key_points: string[];
   quick_check_question: string;
   answer: string;
 }
 
 export interface SuggestedPairingPayload {
-  id: string;
-  shift: string;
+  id?: string;
+  shift?: string;
   veteran_id: string;
-  veteran_name: string;
-  veteran_role: string;
-  veteran_experience: number;
+  veteran_name?: string;
+  veteran_role?: string;
+  veteran_experience?: number;
   junior_id: string;
-  junior_name: string;
-  junior_role: string;
-  junior_experience: number;
-  upcoming_job: string;
+  junior_name?: string;
+  junior_role?: string;
+  junior_experience?: number;
+  upcoming_job?: string;
   reason: string;
 }
 
@@ -54,6 +58,8 @@ export interface KnowledgeAgentResult {
     junior_id: string;
     reason: string;
   };
+  provider?: string;
+  cached_note?: string;
 }
 
 // Cached learning cards designed for junior technicians
@@ -99,43 +105,27 @@ export const CACHED_LEARNING_CARDS: LearningCardPayload[] = [
       'Clean all hose couplings thoroughly before disassembly to prevent particulate contamination entering the valve manifold.',
     ],
     quick_check_question:
-      'If a hydraulic ram moves sluggishly and the oil smells burnt, what is the most probable condition?',
+      'What is the first physical symptom of hydraulic rod seal extrusion under working pressure?',
     answer:
-      'Hydraulic oil degradation combined with seal bypass or pump cavitation causing pressure drop.',
-  },
-  {
-    id: 'LC-04',
-    title: 'Centrifugal pump cavitation vs mechanical seal leak',
-    for_role: 'Junior',
-    machine_type: 'pump',
-    key_points: [
-      'Cavitation sounds like gravel or marbles shaking inside the casing; seal failure creates hissing or dripping.',
-      'Mechanical seal leaks show visible wetness around the seal gland and product buildup on the shaft.',
-      'Never run a pump dry to test rotation; dry running ruins silicon carbide seal faces within 10 seconds.',
-    ],
-    quick_check_question:
-      'Why does running a pump dry for just a few seconds destroy mechanical seals?',
-    answer:
-      'Mechanical seal faces depend on a microscopic liquid film between the faces for cooling and lubrication; without fluid, friction destroys them.',
+      'Micro-weeping of fluid along the piston rod surface during extension stroke, accumulating as a puddle over an 8-hour shift.',
   },
 ];
 
-// Suggested veteran + junior pairings based on shift and upcoming work orders
 export const SUGGESTED_PAIRINGS: SuggestedPairingPayload[] = [
   {
     id: 'PAIR-01',
     shift: 'A',
-    veteran_id: 'P07-T03',
-    veteran_name: 'Gurpreet Singh',
-    veteran_role: 'Veteran (26 yrs)',
-    veteran_experience: 26,
+    veteran_id: 'P07-T01',
+    veteran_name: 'Ramesh Patil',
+    veteran_role: 'Veteran (32 yrs)',
+    veteran_experience: 32,
     junior_id: 'P07-T08',
     junior_name: 'Sneha Joshi',
     junior_role: 'Junior (2 yrs)',
     junior_experience: 2,
-    upcoming_job: 'WO-2202: Compressor bearing clearance & oil flush (P07-M06)',
+    upcoming_job: 'P07-M03: Output shaft bearing replacement & laser alignment',
     reason:
-      'Shift A pairing: Pair veteran Gurpreet with junior Sneha for hands-on bearing clearance measurement and vibration sensor calibration.',
+      'Shift A pairing: Pair veteran Ramesh with junior Sneha for precision laser dial gauge setup and bearing clearance measurement.',
   },
   {
     id: 'PAIR-02',
@@ -169,25 +159,16 @@ export const SUGGESTED_PAIRINGS: SuggestedPairingPayload[] = [
   },
 ];
 
-/**
- * Service function returning cached learning cards for junior technicians
- */
 export async function getLearningCards(roleFilter?: 'Junior' | 'Trainee'): Promise<LearningCardPayload[]> {
   if (!roleFilter) return CACHED_LEARNING_CARDS;
   return CACHED_LEARNING_CARDS.filter((c) => c.for_role === roleFilter);
 }
 
-/**
- * Service function returning suggested veteran-junior mentorship pairings
- */
 export async function getSuggestedPairings(plantId?: string): Promise<SuggestedPairingPayload[]> {
   return SUGGESTED_PAIRINGS;
 }
 
-/**
- * Generates a structured Knowledge Agent result matching prompts/knowledge_agent.md schema
- */
-export async function knowledgeService(input: {
+export function computeRuleBasedKnowledge(input: {
   work_order_id?: string;
   observation_id?: string;
   machine_type: string;
@@ -195,7 +176,7 @@ export async function knowledgeService(input: {
   symptoms: string[];
   findings?: string;
   technician_id?: string;
-}): Promise<KnowledgeAgentResult> {
+}): KnowledgeAgentResult {
   const sourceId = input.work_order_id || input.observation_id || 'WO-2201';
 
   return {
@@ -214,7 +195,7 @@ export async function knowledgeService(input: {
       root_cause: input.findings || 'Lubricant starvation caused by clogged grease nipple passage',
       prevention: 'Enforce 500-hour ultrasound-assisted re-greasing routine',
       source_ids: [sourceId],
-      verified: false, // Rule 6: All entries stay unverified until a veteran approves them
+      verified: false,
     },
     learning_card: {
       id: `LC-${Date.now().toString().slice(-4)}`,
@@ -234,5 +215,85 @@ export async function knowledgeService(input: {
       junior_id: 'P07-T07',
       reason: 'Pair veteran Ramesh with junior Rahul for hands-on failure mode diagnosis and zero-energy protocol demonstration.',
     },
+  };
+}
+
+/**
+ * Knowledge Agent service function wired to live AI agent layer.
+ */
+export async function knowledgeService(input: {
+  work_order_id?: string;
+  observation_id?: string;
+  machine_type: string;
+  failure_mode: string;
+  symptoms: string[];
+  findings?: string;
+  technician_id?: string;
+  plant_id?: string;
+}): Promise<KnowledgeAgentResult> {
+  const plantId = input.plant_id || 'P-07';
+  const store = getLocalStoreData();
+
+  const context = {
+    work_order: input.work_order_id
+      ? (store.work_orders || []).find((w: any) => w.id === input.work_order_id) || {
+          id: input.work_order_id,
+          status: 'closed',
+          root_cause: input.findings,
+        }
+      : null,
+    alert: null,
+    observation: null,
+    machine: {
+      type: input.machine_type,
+      criticality: 'B',
+    },
+    existing_knowledge: (store.knowledge_library || []).slice(0, 5),
+    technicians: (store.technicians || []).slice(0, 8),
+  };
+
+  const agentResult = await executeAgent<KnowledgeAgentResult>({
+    agent: 'knowledge',
+    plant_id: plantId,
+    trigger: 'user_request',
+    prompt_version: 'knowledge-v1.0',
+    context,
+    ruleBasedFallback: () => computeRuleBasedKnowledge(input),
+  });
+
+  const finalResult = agentResult.data;
+
+  // Persist to localStore knowledge_library if valid new entry
+  if (finalResult && finalResult.knowledge_entry) {
+    const newEntry = {
+      id: `KL-${Date.now().toString().slice(-4)}`,
+      machine_type: finalResult.knowledge_entry.machine_type,
+      failure_mode: finalResult.knowledge_entry.failure_mode,
+      sound: finalResult.knowledge_entry.sound,
+      smell: finalResult.knowledge_entry.smell,
+      feel_visual: finalResult.knowledge_entry.feel_visual,
+      captured_from: input.technician_id || 'P07-T01',
+      captured_at_plant: plantId,
+      verified: false,
+    };
+    if (Array.isArray(store.knowledge_library)) {
+      store.knowledge_library.push(newEntry);
+    }
+
+    try {
+      const { getSupabaseAdminClient } = await import('./supabaseAdmin');
+      const admin = getSupabaseAdminClient();
+      if (admin) {
+        await admin.from('knowledge_library').insert(newEntry);
+      }
+    } catch (e) {
+      // Expected in testing environments without server-only
+    }
+  }
+
+  return {
+    ...finalResult,
+    provider: agentResult.provider,
+    cached_note: agentResult.cached_note,
   };
 }

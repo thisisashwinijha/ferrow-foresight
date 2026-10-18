@@ -88,6 +88,7 @@ export function AlertDetailView({
   const [isRejecting, setIsRejecting] = useState<boolean>(false);
   const [showRejectModal, setShowRejectModal] = useState<boolean>(false);
   const [rejectReason, setRejectReason] = useState<string>('');
+  const [isRerunningTriage, setIsRerunningTriage] = useState<boolean>(false);
 
   // Correct and re-check state
   const [selectedFailureModeOverride, setSelectedFailureModeOverride] = useState<string>(
@@ -316,6 +317,36 @@ export function AlertDetailView({
     }
   };
 
+  const canRerunTriage =
+    role === 'Maintenance Planner' ||
+    role === 'Plant Head' ||
+    role === 'Head of Plant Operations' ||
+    role === 'planner' ||
+    role === 'plant_head';
+
+  const handleRerunTriage = async () => {
+    setIsRerunningTriage(true);
+    try {
+      const res = await fetch(`/api/alerts/${alert.id}/rerun`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setAlert(data.alert);
+        showToast(data.message || `AI triage re-run complete via ${data.provider}`, 'success');
+        router.refresh();
+      } else {
+        showToast(data.error || 'Failed to re-run AI triage', 'alert');
+      }
+    } catch {
+      showToast('Network error while re-running AI triage', 'alert');
+    } finally {
+      setIsRerunningTriage(false);
+    }
+  };
+
   const isPending = alert.status === 'pending' || alert.status === 'needs_review';
   const hasGuardrailNeedsReview = !guardrailOutcome.pass && alert.status !== 'approved';
 
@@ -400,6 +431,19 @@ export function AlertDetailView({
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-chip text-xs font-medium bg-agent/10 text-agent">
                 <Sparkles className="w-3 h-3" /> AI Triage Plan
               </span>
+
+              {canRerunTriage && alert.status !== 'approved' && alert.status !== 'resolved' && (
+                <button
+                  type="button"
+                  onClick={handleRerunTriage}
+                  disabled={isRerunningTriage}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-chip text-xs font-semibold bg-agent/10 hover:bg-agent/20 text-agent border border-agent/30 transition-colors disabled:opacity-50"
+                  title="Re-run live AI triage with latest telemetry and observations"
+                >
+                  <Sparkles className={`w-3 h-3 ${isRerunningTriage ? 'animate-spin' : ''}`} />
+                  <span>{isRerunningTriage ? 'Re-running...' : 'Re-run AI triage'}</span>
+                </button>
+              )}
             </div>
 
             <p className="text-xs text-ink-muted flex items-center gap-3">
@@ -797,6 +841,18 @@ export function AlertDetailView({
                   <XCircle className="w-4 h-4 text-ink-muted" />
                   <span>Reject Alert with Reason</span>
                 </button>
+
+                {canRerunTriage && (
+                  <button
+                    type="button"
+                    onClick={handleRerunTriage}
+                    disabled={isRerunningTriage}
+                    className="w-full py-2 rounded-btn border border-agent/30 bg-agent/5 hover:bg-agent/10 text-xs font-semibold text-agent transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <Sparkles className={`w-3.5 h-3.5 ${isRerunningTriage ? 'animate-spin' : ''}`} />
+                    <span>{isRerunningTriage ? 'Re-running live triage...' : 'Re-run AI triage'}</span>
+                  </button>
+                )}
               </div>
             </div>
           )}

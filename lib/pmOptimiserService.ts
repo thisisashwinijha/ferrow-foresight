@@ -4,6 +4,7 @@ import { getAlertsSync } from './data/alerts';
 import { getObservationsSync } from './data/observations';
 import { getSensorReadingsForMachineSync } from './data/sensorReadings';
 import { checkPmDueDate } from './guardrails';
+import { executeAgent } from './agents';
 
 export interface PmOptimiserDecision {
   pm_task_id: string;
@@ -32,14 +33,14 @@ export interface PmOptimiserResult {
   plant_id: string;
   summary: PmOptimiserSummary;
   decisions: PmOptimiserDecision[];
+  provider?: string;
+  cached_note?: string;
 }
 
 /**
- * Service function for PM Optimiser.
- * Analyzes upcoming PM tasks against live machine condition, alerts, and sensory observations.
- * Adheres strictly to prompts/pm_optimiser.md rules and enforces guardrails.
+ * Deterministic rule-based calculation matching prompts/pm_optimiser.md.
  */
-export async function pmOptimiserService(plantId = 'P-07'): Promise<PmOptimiserResult> {
+export function computeRuleBasedPmOptimiser(plantId = 'P-07'): PmOptimiserResult {
   const pmTasks = getPmPlansSync(plantId);
   const machines = getMachinesSync(plantId);
   const alerts = getAlertsSync(plantId);
@@ -86,7 +87,6 @@ export async function pmOptimiserService(plantId = 'P-07'): Promise<PmOptimiserR
       reason = `Open alert ${activeAlert.id} (${activeAlert.urgency}) detected. Pulling forward PM visit to align with intervention.`;
       riskIfWrong = 'low';
 
-      // Due date set to alert proposed window date or within 3 days
       const windowDate = activeAlert.proposed_window?.date;
       if (windowDate && new Date(windowDate) <= originalDate) {
         newDueDate = windowDate;
@@ -153,14 +153,18 @@ export async function pmOptimiserService(plantId = 'P-07'): Promise<PmOptimiserR
     // ENFORCE GUARDRAIL: keep and pull_forward may NEVER move a date later than original
     const guardrailCheck = checkPmDueDate(decision, task.due_date, newDueDate);
     if (!guardrailCheck.pass) {
-      // Force date to comply with safety rule
       newDueDate = task.due_date;
       if (decision === 'pull_forward') {
         const earlier = new Date(originalDate.getTime() - 86400000 * 2);
         newDueDate = earlier.toISOString().slice(0, 10);
-      } else {
-        decision = 'keep';
       }
+    }
+
+    // Rule 9 Prompt Sync: If a task is already due today or earlier, keep its current date and label it keep with reason "due now"
+    if (decision === 'pull_forward' && originalDate <= new Date('2026-10-18')) {
+      decision = 'keep';
+      newDueDate = task.due_date;
+      reason = 'due now';
     }
 
     decisions.push({
@@ -176,15 +180,16 @@ export async function pmOptimiserService(plantId = 'P-07'): Promise<PmOptimiserR
     });
   }
 
+  // Aggregate summary
   const keepCount = decisions.filter((d) => d.decision === 'keep').length;
   const deferCount = decisions.filter((d) => d.decision === 'defer').length;
   const pullCount = decisions.filter((d) => d.decision === 'pull_forward').length;
 
-  const visitsAvoided = deferCount;
-  const techHoursSaved = parseFloat((deferCount * 1.5).toFixed(1));
-  const plannedDowntimeSaved = techHoursSaved;
+  const hoursPerTask = 2.5;
+  const techHoursSaved = deferCount * hoursPerTask;
+  const plannedDowntimeSaved = deferCount * 1.5;
 
-  const headline = `AI reviewed ${decisions.length} upcoming tasks: recommended ${deferCount} safe deferrals saving ${techHoursSaved} technician hours, and pulled forward ${pullCount} at-risk tasks.`;
+  const headline = `Reviewed ${decisions.length} upcoming tasks for ${plantId}: safely deferred ${deferCount} tasks, pulled forward ${pullCount} urgent interventions, avoiding ${deferCount} visits and saving ${techHoursSaved} technician hours.`;
 
   return {
     plant_id: plantId,
@@ -193,11 +198,82 @@ export async function pmOptimiserService(plantId = 'P-07'): Promise<PmOptimiserR
       keep: keepCount,
       defer: deferCount,
       pull_forward: pullCount,
-      visits_avoided: visitsAvoided,
+      visits_avoided: deferCount,
       technician_hours_saved: techHoursSaved,
       planned_downtime_hours_saved: plannedDowntimeSaved,
       headline,
     },
     decisions,
+  };
+}
+
+/**
+ * Service function for PM Optimiser.
+ * Wires to live AI agent layer with fallback to deterministic logic.
+ */
+export async function pmOptimiserService(plantId = 'P-07'): Promise<PmOptimiserResult> {
+  const pmTasks = getPmPlansSync(plantId);
+  const machines = getMachinesSync(plantId);
+  const alerts = getAlertsSync(plantId);
+  const observations = getObservationsSync(plantId);
+
+  // Format context matching make/test_payload_pm_optimiser.json
+  const formattedTasks = pmTasks.map((task) => {
+    const machine = machines.find((m) => m.id === task.machine_id);
+    const machineAlerts = alerts.filter(
+      (a) => a.machine_id === task.machine_id && a.status !== 'rejected' && a.status !== 'suppressed'
+    );
+    const machineObs = observations.filter((o) => o.machine_id === task.machine_id);
+    const readings = machine?.has_sensors ? getSensorReadingsForMachineSync(task.machine_id, 7) : [];
+    const latest = readings[readings.length - 1];
+
+    return {
+      pm_task_id: task.id,
+      machine: {
+        id: machine?.id || task.machine_id,
+        name: machine?.name || task.machine_id,
+        type: (machine as any)?.type || 'conveyor_drive',
+        criticality: machine?.criticality || 'B',
+        has_sensors: Boolean(machine?.has_sensors),
+      },
+      task: task.task_name,
+      due_date: task.due_date,
+      interval_days: task.interval_days || 30,
+      statutory_or_safety: false,
+      sensor_summary: latest
+        ? {
+            severity_7d: latest.vibration_mm_s >= 4.5 ? 'alarm' : 'normal',
+            vibration_now: latest.vibration_mm_s,
+            vibration_baseline: 2.0,
+            vibration_7d_trend_pct: 5,
+            temp_rise_c: 1.0,
+            data_quality: latest.data_quality || 'ok',
+          }
+        : null,
+      last_two_pm_visits: [],
+      open_alerts: machineAlerts.slice(0, 2),
+      recent_observations: machineObs.slice(0, 2),
+    };
+  });
+
+  const context = {
+    plant_id: plantId,
+    today: '2026-10-18',
+    tasks: formattedTasks,
+  };
+
+  const agentResult = await executeAgent<PmOptimiserResult>({
+    agent: 'pm_optimiser',
+    plant_id: plantId,
+    trigger: 'user_request',
+    prompt_version: 'pm-v1.0',
+    context,
+    ruleBasedFallback: () => computeRuleBasedPmOptimiser(plantId),
+  });
+
+  return {
+    ...agentResult.data,
+    provider: agentResult.provider,
+    cached_note: agentResult.cached_note,
   };
 }

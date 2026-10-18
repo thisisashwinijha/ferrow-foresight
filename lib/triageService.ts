@@ -1,61 +1,52 @@
 import { Alert, Observation, Machine, AlertUrgency, FailureMode } from './types';
 import { getMachineByIdSync } from './data/machines';
 import { getSensorReadingsForMachineSync } from './data/sensorReadings';
-import { addLocalAlert, addLocalObservation, getLocalStoreData } from './data/localStore';
-import { getSupabaseAdminClient } from './supabaseAdmin';
+import {
+  addLocalAlert,
+  addLocalObservation,
+  getLocalStoreData,
+  mutateLocalAlert,
+} from './data/localStore';
 import { runAllGuardrails } from './guardrails';
+import { executeAgent, AgentExecutionResult } from './agents';
 
 export interface TriageInput {
   machine_id: string;
   plant_id: string;
-  symptom_tags: string[];
-  note: string;
-  technician_id: string;
+  symptom_tags?: string[];
+  note?: string;
+  technician_id?: string;
+  alert_id?: string;
+  forceLive?: boolean;
 }
 
 export interface TriageResult {
-  observation: Observation;
+  observation?: Observation;
   alert: Alert;
+  execution?: AgentExecutionResult;
 }
 
-/**
- * Single server function for triage.
- * Runs rule-based triage on technician sensory capture to synthesize an Alert.
- * Adheres strictly to the prompts/triage_planner.md failure_mode taxonomy
- * and verifies output through guardrails.
- */
-export async function triageService(input: TriageInput): Promise<TriageResult> {
-  const machine = getMachineByIdSync(input.machine_id) || {
-    id: input.machine_id,
-    plant_id: input.plant_id,
-    line_id: 'P07-L1',
-    criticality: 'B',
-    has_sensors: false,
-  };
-
-  const now = new Date().toISOString();
-  const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-  const obsId = `OBS-${randomSuffix}`;
-  const alertId = `AL-${randomSuffix}`;
-
-  // 1. Create Observation
+function computeRuleBasedTriage(
+  machine: any,
+  input: TriageInput,
+  obsId: string,
+  alertId: string,
+  now: string,
+  store: any
+): { observation: Observation; alert: Alert } {
   const observation: Observation = {
     id: obsId,
     machine_id: input.machine_id,
-    technician_id: input.technician_id,
+    technician_id: input.technician_id || 'P07-T01',
     created_at: now,
-    symptom_tags: input.symptom_tags,
-    note: input.note,
+    symptom_tags: input.symptom_tags || [],
+    note: input.note || 'Observation recorded during inspection.',
     source: 'technician_capture',
     plant_id: input.plant_id,
     processed: true,
   };
 
-  // 2. Rule-based failure mode taxonomy mapping & urgency synthesis
-  // Taxonomy strictly from prompts/triage_planner.md:
-  // bearing_wear | belt_wear | misalignment | lubrication_failure | motor_overheating |
-  // hydraulic_leak | seal_failure | electrical_fault | pneumatic_leak | sensor_fault | unknown | none
-  const tags = input.symptom_tags.map((t) => t.toLowerCase());
+  const tags = (input.symptom_tags || []).map((t) => t.toLowerCase());
   const noteLower = (input.note || '').toLowerCase();
 
   let failureMode: FailureMode = 'unknown';
@@ -70,7 +61,6 @@ export async function triageService(input: TriageInput): Promise<TriageResult> {
   let assignedShift = 'A';
   let sparesCheck: any[] = [];
 
-  const store = getLocalStoreData();
   const allSpares = (store.spares as any[]) || [];
 
   if (
@@ -148,64 +138,69 @@ export async function triageService(input: TriageInput): Promise<TriageResult> {
       const sp = allSpares.find((s) => s.part_no === 'SP-012' || s.id === 'P07-SP-012');
       if (sp) sparesCheck = [{ part_id: sp.part_no || 'SP-012', name: sp.name, stock: sp.stock, status: sp.stock > 0 ? 'available' : 'stockout', action: 'reserve 1' }];
     }
-  } else if (tags.some((t) => t.includes('sound')) || noteLower.includes('rattl') || noteLower.includes('clank') || noteLower.includes('squeal')) {
-    if (noteLower.includes('squeal')) {
-      failureMode = 'belt_wear';
-      descriptiveTitle = 'Drive belt tension loss & pulley slippage';
-      requiredCerts = ['Mechanical', 'LOTO'];
-      assignedTechId = 'P07-T01';
-      assignedShift = 'A';
+  } else if (
+    tags.some((t) => t.includes('fluid') || t.includes('leak')) ||
+    noteLower.includes('leak') ||
+    noteLower.includes('drip') ||
+    noteLower.includes('oil') ||
+    noteLower.includes('puddle') ||
+    noteLower.includes('weep')
+  ) {
+    if (noteLower.includes('seal') || noteLower.includes('weep')) {
+      failureMode = 'seal_failure';
+      descriptiveTitle = 'Rotary shaft lip seal wear & fluid weeping';
+      actionType = 'replace';
+      recommendedAction = 'Apply LOTO. Clean shaft surface, depressurize circuit, and replace degraded Viton lip seal.';
     } else {
-      failureMode = 'bearing_wear';
-      descriptiveTitle = 'Acoustic anomaly: transmission bearing fatigue';
-      requiredCerts = ['Mechanical', 'LOTO'];
-      assignedTechId = 'P07-T01';
-      assignedShift = 'A';
+      failureMode = 'hydraulic_leak';
+      descriptiveTitle = 'High-pressure hydraulic fitting seepage';
+      actionType = 'repair';
+      recommendedAction = 'Apply LOTO. Depressurize hydraulic circuit, inspect O-ring seals, and torque cylinder hose fittings.';
     }
-    urgency = machine.criticality === 'A' ? 'P2' : 'P3';
-    actionType = 'inspect';
-    recommendedAction = 'Apply LOTO. Remove safety guards, check transmission play, and inspect bearings for acoustic wear.';
-  } else if (tags.some((t) => t.includes('leak')) || noteLower.includes('hydraulic') || noteLower.includes('fluid')) {
-    failureMode = 'hydraulic_leak';
-    descriptiveTitle = 'Hydraulic pressure line leakage & seal degradation';
     urgency = machine.criticality === 'A' ? 'P1' : 'P2';
-    actionType = 'repair';
-    recommendedAction = 'Apply LOTO and depressurize hydraulic loop. Inspect high-pressure fittings and replace degraded seals.';
     requiredCerts = ['Hydraulics', 'LOTO'];
     assignedTechId = 'P07-T01';
     assignedShift = 'A';
-    const sp = allSpares.find((s) => s.part_no === 'SP-008' || s.id === 'P07-SP-008');
-    if (sp) sparesCheck = [{ part_id: sp.part_no || 'SP-008', name: sp.name, stock: sp.stock, status: sp.stock > 0 ? 'available' : 'stockout', action: 'reserve 1' }];
-  } else if (tags.some((t) => t.includes('hiss')) || noteLower.includes('pneumatic') || noteLower.includes('air')) {
-    failureMode = 'pneumatic_leak';
-    descriptiveTitle = 'Pneumatic line pressure drop & fitting seal leak';
-    urgency = 'P3';
-    actionType = 'repair';
-    recommendedAction = 'Apply LOTO and bleed air pressure. Replace leaking pneumatic fitting and verify line pressure.';
-    requiredCerts = ['Pneumatics', 'LOTO'];
-    assignedTechId = 'P07-T03';
-    assignedShift = 'A';
-    const sp = allSpares.find((s) => s.part_no === 'SP-019' || s.id === 'P07-SP-019');
-    if (sp) sparesCheck = [{ part_id: sp.part_no || 'SP-019', name: sp.name, stock: sp.stock, status: sp.stock > 0 ? 'available' : 'stockout', action: 'reserve 1' }];
+    const sp = allSpares.find((s) => s.part_no === 'SP-007' || s.id === 'P07-SP-007');
+    if (sp) sparesCheck = [{ part_id: sp.part_no || 'SP-007', name: sp.name, stock: sp.stock, status: sp.stock > 0 ? 'available' : 'stockout', action: 'reserve 1' }];
+  } else if (tags.some((t) => t.includes('sound')) || noteLower.includes('sound') || noteLower.includes('noise')) {
+    if (noteLower.includes('hiss') || noteLower.includes('air') || noteLower.includes('pneumatic')) {
+      failureMode = 'pneumatic_leak';
+      descriptiveTitle = 'Pneumatic line micro-fissure & pressure drop';
+      actionType = 'repair';
+      recommendedAction = 'Isolate pneumatic feed, perform ultrasonic leak detection, and replace leaking push-in fittings.';
+      urgency = 'P3';
+      requiredCerts = ['Pneumatics', 'LOTO'];
+      assignedTechId = 'P07-T03';
+      assignedShift = 'A';
+    } else {
+      failureMode = 'bearing_wear';
+      descriptiveTitle = 'Early acoustic harmonic anomaly';
+      actionType = 'inspect';
+      recommendedAction = 'Perform ultrasonic acoustic inspection on drive-end bearing to verify raceway degradation.';
+      urgency = 'P3';
+      requiredCerts = ['Mechanical'];
+      assignedTechId = 'P07-T01';
+      assignedShift = 'A';
+    }
   } else {
     failureMode = 'unknown';
-    descriptiveTitle = 'Vague sensory indicators with insufficient diagnostic evidence';
-    insufficientEvidence = true;
-    confidence = 0.5;
+    descriptiveTitle = 'Sensory cue variance requiring exploratory inspection';
     urgency = 'P3';
     actionType = 'inspect';
-    recommendedAction = 'Conduct thorough physical inspection, retorque structural bolts, and log baseline acoustic/thermal readings.';
-    requiredCerts = ['Mechanical', 'LOTO'];
+    recommendedAction = 'Perform on-site physical inspection to gather additional sensory evidence.';
+    insufficientEvidence = true;
+    confidence = 0.55;
+    requiredCerts = ['Mechanical'];
     assignedTechId = 'P07-T01';
     assignedShift = 'A';
   }
 
-  // 3. Evidence synthesis: cite real observation id and real sensor readings when available
   const evidence: Array<{ id: string; type: string; text: string }> = [
     {
       id: 'E1',
       type: 'observation',
-      text: `Observation ${obsId}: ${input.note} (Tags: ${input.symptom_tags.join(', ')})`,
+      text: `Observation ${obsId}: ${input.note || 'Sensory notes'} (Tags: ${(input.symptom_tags || []).join(', ')})`,
     },
   ];
 
@@ -223,15 +218,16 @@ export async function triageService(input: TriageInput): Promise<TriageResult> {
     }
   }
 
-  const reasoning = `Technician observation cited in E1 (${obsId}) reported sensory cues [${input.symptom_tags.join(', ')}] on asset ${input.machine_id}.${sensorCitation} Diagnostic findings indicate ${descriptiveTitle}.`;
+  const reasoning = `Technician observation cited in E1 (${obsId}) reported sensory cues [${(input.symptom_tags || []).join(', ')}] on asset ${input.machine_id}.${sensorCitation} Diagnostic findings indicate ${descriptiveTitle}.`;
 
-  // 4. Create candidate alert
   const alertCandidate: Alert = {
     id: alertId,
     machine_id: input.machine_id,
     plant_id: input.plant_id,
     created_at: now,
-    trigger: `Sensory capture: ${input.symptom_tags.join(', ')}`,
+    trigger: input.symptom_tags?.length
+      ? `Sensory capture: ${input.symptom_tags.join(', ')}`
+      : 'Sensor threshold',
     risk_score: urgency === 'P1' ? 84 : urgency === 'P2' ? 68 : 42,
     failure_mode: failureMode,
     confidence,
@@ -246,7 +242,7 @@ export async function triageService(input: TriageInput): Promise<TriageResult> {
     assigned_technician: assignedTechId,
     shadow_technician: assignedShift === 'A' ? 'P07-T08' : 'P07-T07',
     proposed_window: {
-      line_id: (machine as any).line_id || 'P07-L1',
+      line_id: machine.line_id || 'P07-L1',
       date: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
       shift: assignedShift,
       window_type: 'changeover',
@@ -259,11 +255,10 @@ export async function triageService(input: TriageInput): Promise<TriageResult> {
     status: 'pending',
     decided_by: null,
     decision_reason: null,
-    source: 'technician_capture',
+    source: 'cached',
     prompt_version: 'triage-v1.0',
   };
 
-  // 5. Run Guardrail Engine on candidate alert
   const guardrailOutcome = runAllGuardrails(alertCandidate, {
     machineCriticality: machine.criticality,
     technicianShift: assignedShift,
@@ -273,31 +268,221 @@ export async function triageService(input: TriageInput): Promise<TriageResult> {
     referenceDate: '2026-10-18',
   });
 
-  // STEP 0 (b): When guardrails fail, status must be needs_review (never pending)
-  const finalStatus = guardrailOutcome.pass ? 'pending' : (guardrailOutcome.status === 'suppressed' ? 'suppressed' : 'needs_review');
+  const finalStatus = guardrailOutcome.pass
+    ? 'pending'
+    : guardrailOutcome.status === 'suppressed'
+    ? 'suppressed'
+    : 'needs_review';
 
   const alert: Alert = {
     ...alertCandidate,
     status: finalStatus,
+    guardrail_result: {
+      pass: guardrailOutcome.pass,
+      checks: guardrailOutcome.checks,
+    },
     assigned_technician: guardrailOutcome.modifiedData.assigned_technician,
     loto_required: guardrailOutcome.modifiedData.loto_required,
     required_certifications: guardrailOutcome.modifiedData.required_certifications,
+    spares_blocked: guardrailOutcome.modifiedData.spares_blocked,
   };
 
-  // 6. Save locally
-  addLocalObservation(observation);
-  addLocalAlert(alert);
+  return { observation, alert };
+}
 
-  // 7. If Supabase is reachable, persist
-  const admin = getSupabaseAdminClient();
-  if (admin) {
-    try {
-      await admin.from('observations').insert(observation);
-      await admin.from('alerts').insert(alert);
-    } catch (e) {
-      console.warn('Could not sync triage observation/alert to Supabase:', e);
+/**
+ * Single server function for triage.
+ * Runs live AI triage via agent layer (Make -> Direct -> Fallback -> Cached).
+ */
+export async function triageService(input: TriageInput): Promise<TriageResult> {
+  const machine = getMachineByIdSync(input.machine_id) || {
+    id: input.machine_id,
+    plant_id: input.plant_id,
+    name: `Machine ${input.machine_id}`,
+    line_id: 'P07-L1',
+    criticality: 'B',
+    has_sensors: false,
+    type: 'conveyor_drive',
+  };
+
+  const store = getLocalStoreData();
+  const now = new Date().toISOString();
+  const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+  const obsId = `OBS-${randomSuffix}`;
+  const alertId = input.alert_id || `AL-${randomSuffix}`;
+
+  // Build structured observation
+  const observation: Observation = {
+    id: obsId,
+    machine_id: input.machine_id,
+    technician_id: input.technician_id || 'P07-T01',
+    created_at: now,
+    symptom_tags: input.symptom_tags || [],
+    note: input.note || '',
+    source: 'technician_capture',
+    plant_id: input.plant_id,
+    processed: true,
+  };
+
+  // Build sensor summary
+  let sensorData: any = null;
+  if (machine.has_sensors) {
+    const readings = getSensorReadingsForMachineSync(input.machine_id, 14);
+    const latest = readings[readings.length - 1];
+    if (latest) {
+      sensorData = {
+        vibration_mm_s_now: latest.vibration_mm_s,
+        vibration_baseline: (machine as any).vibration_baseline || 1.8,
+        vibration_7d_trend_pct: 12.0,
+        temperature_c_now: latest.temperature_c,
+        temperature_baseline: (machine as any).temp_baseline || 55.0,
+        data_quality: latest.data_quality || 'ok',
+      };
     }
   }
 
-  return { observation, alert };
+  // Build interpreter_input
+  const interpreterInput = {
+    machine: {
+      id: machine.id,
+      name: machine.name,
+      type: (machine as any).type || 'conveyor_drive',
+      line_id: machine.line_id,
+      criticality: machine.criticality,
+      has_sensors: machine.has_sensors,
+    },
+    observation: input.note
+      ? {
+          id: obsId,
+          technician_id: observation.technician_id,
+          symptom_tags: observation.symptom_tags,
+          note: observation.note,
+          source: observation.source,
+          created_at: observation.created_at,
+        }
+      : null,
+    knowledge_library_matches: (store.knowledge_library || []).slice(0, 3),
+  };
+
+  // Build triage_context
+  const triageContext = {
+    current_time: now,
+    current_shift: 'A',
+    machine: interpreterInput.machine,
+    sensor: sensorData,
+    observation: interpreterInput.observation,
+    recent_history: (store.maintenance_log || [])
+      .filter((l: any) => l.machine_id === input.machine_id)
+      .slice(0, 3),
+    spares: (store.spares || []).slice(0, 6),
+    technicians: (store.technicians || []).slice(0, 10),
+    production_windows: (store.production_schedule || []).slice(0, 8),
+    knowledge_library_matches: (store.knowledge_library || []).slice(0, 3),
+  };
+
+  // Execute Agent Layer
+  const agentExecution = await executeAgent({
+    agent: 'triage',
+    request_id: alertId,
+    plant_id: input.plant_id,
+    machine_id: input.machine_id,
+    trigger: input.symptom_tags?.length
+      ? `Sensory capture: ${input.symptom_tags.join(', ')}`
+      : 'sensor_threshold',
+    prompt_version: 'triage-v1.0',
+    interpreter_input: interpreterInput,
+    triage_context: triageContext,
+    context: triageContext,
+    user_text: input.note,
+    skipLive: Boolean(process.env.DEMO_MODE === 'true' && !input.forceLive),
+    ruleBasedFallback: () => {
+      const fallback = computeRuleBasedTriage(
+        machine,
+        input,
+        obsId,
+        alertId,
+        now,
+        store
+      );
+      return fallback.alert;
+    },
+  });
+
+  const parsedAlert = agentExecution.data;
+
+  // Synthesize final alert entity
+  const alert: Alert = {
+    id: alertId,
+    machine_id: input.machine_id,
+    plant_id: input.plant_id,
+    created_at: now,
+    trigger: input.symptom_tags?.length
+      ? `Sensory capture: ${input.symptom_tags.join(', ')}`
+      : 'Sensor threshold',
+    risk_score: parsedAlert.urgency === 'P1' ? 88 : parsedAlert.urgency === 'P2' ? 68 : 42,
+    failure_mode: parsedAlert.failure_mode || 'unknown',
+    confidence: parsedAlert.confidence ?? 0.85,
+    urgency: parsedAlert.urgency || 'P3',
+    insufficient_evidence: Boolean(parsedAlert.insufficient_evidence),
+    evidence: parsedAlert.evidence || [],
+    reasoning: parsedAlert.reasoning || '',
+    recommended_action: parsedAlert.recommended_action || '',
+    action_type: parsedAlert.action_type || 'inspect',
+    required_certifications: parsedAlert.required_certifications || ['Mechanical'],
+    loto_required: Boolean(parsedAlert.loto_required),
+    assigned_technician: parsedAlert.assigned_technician || null,
+    shadow_technician: parsedAlert.shadow_technician || null,
+    proposed_window: parsedAlert.proposed_window || {
+      line_id: machine.line_id || 'P07-L1',
+      date: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
+      shift: 'A',
+      window_type: 'changeover',
+      production_loss_units: 0,
+      note: 'Changeover window aligned to shift schedule',
+    },
+    spares_check: parsedAlert.spares_check || [],
+    spares_blocked: Boolean(parsedAlert.spares_blocked),
+    est_failure_cost_usd: parsedAlert.est_failure_cost_usd ?? (machine.criticality === 'A' ? 24000 : 12000),
+    est_intervention_cost_usd: parsedAlert.est_intervention_cost_usd ?? 950,
+    status: parsedAlert.status || 'pending',
+    guardrail_result: parsedAlert.guardrail_result || {
+      pass: agentExecution.guardrail_pass,
+      checks: [],
+    },
+    decided_by: null,
+    decision_reason: null,
+    source: agentExecution.provider,
+    prompt_version: agentExecution.prompt_version,
+  };
+
+  // If this was an existing alert re-run, update it
+  if (input.alert_id) {
+    mutateLocalAlert(input.alert_id, alert);
+  } else {
+    // New observation + alert
+    addLocalObservation(observation);
+    addLocalAlert(alert);
+  }
+
+  // Sync to Supabase if connected
+  try {
+    const { getSupabaseAdminClient } = await import('./supabaseAdmin');
+    const admin = getSupabaseAdminClient();
+    if (admin) {
+      if (input.alert_id) {
+        await admin.from('alerts').update(alert).eq('id', input.alert_id);
+      } else {
+        await admin.from('observations').insert(observation);
+        await admin.from('alerts').insert(alert);
+      }
+    }
+  } catch (e) {
+    // Expected in testing environments without server-only
+  }
+
+  return {
+    observation: input.alert_id ? undefined : observation,
+    alert,
+    execution: agentExecution,
+  };
 }

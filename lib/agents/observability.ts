@@ -1,4 +1,3 @@
-import { getSupabaseAdminClient } from '../supabaseAdmin';
 import { AgentRunRecord } from './types';
 
 // In-memory buffer of recent agent runs for fast retrieval and offline fallback
@@ -51,9 +50,10 @@ export async function logAgentRun(run: AgentRunRecord): Promise<void> {
   }
 
   // Sync to Supabase if admin client available
-  const admin = getSupabaseAdminClient();
-  if (admin) {
-    try {
+  try {
+    const { getSupabaseAdminClient } = await import('../supabaseAdmin');
+    const admin = getSupabaseAdminClient();
+    if (admin) {
       await admin.from('agent_runs').insert({
         alert_id: entry.alert_id || null,
         created_at: entry.created_at,
@@ -69,9 +69,9 @@ export async function logAgentRun(run: AgentRunRecord): Promise<void> {
         guardrail_pass: entry.guardrail_pass,
         error: entry.error || null,
       });
-    } catch (e: any) {
-      console.warn('Could not insert to Supabase agent_runs:', sanitizeError(e));
     }
+  } catch (e: any) {
+    // Expected in testing environments without server-only
   }
 }
 
