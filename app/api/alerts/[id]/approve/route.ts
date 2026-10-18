@@ -153,7 +153,7 @@ export async function POST(
       plant_id: alert.plant_id,
       type: alert.action_type === 'replace' || alert.action_type === 'repair' ? 'CBM' : 'PM',
       priority: alert.urgency,
-      status: 'scheduled',
+      status: 'approved',
       assigned_technician: assignedTech,
       shadow_technician: alert.shadow_technician,
       scheduled_window: scheduledWindow,

@@ -228,6 +228,23 @@ export function getRecentActivityEvents(
       },
     });
 
+    // Escalated to Plant Head
+    if (alert.decision_reason === 'sent_to_plant_head') {
+      events.push({
+        id: `evt-sent-ph-${alert.id}`,
+        timestamp: alert.created_at,
+        type: 'alert_escalated',
+        title: `Sent to Plant Head: ${alert.id}`,
+        description: `Maintenance Planner forwarded P1 on critical machine ${alert.machine_id} for Plant Head authorization`,
+        machineId: alert.machine_id,
+        alertId: alert.id,
+        badge: {
+          label: 'Awaiting Plant Head',
+          variant: 'alarm',
+        },
+      });
+    }
+
     // Alert decision events
     if (alert.status === 'approved') {
       events.push({
@@ -235,7 +252,7 @@ export function getRecentActivityEvents(
         timestamp: alert.created_at, // or decision time
         type: 'alert_approved',
         title: `Alert approved: ${alert.id}`,
-        description: `Approved by ${alert.decided_by || 'Operator'} for maintenance scheduling`,
+        description: `Approved by ${alert.decided_by || 'Maintenance Planner'} for work order creation`,
         machineId: alert.machine_id,
         alertId: alert.id,
         badge: {
@@ -276,6 +293,81 @@ export function getRecentActivityEvents(
 
   // 2. Work Order events
   for (const wo of workOrders) {
+    // Spares confirmation or PR
+    const sparesObj = wo.spares_reserved as any;
+    const sparesConfirmed = Boolean(
+      sparesObj && (sparesObj.confirmed || (Array.isArray(sparesObj) && sparesObj.some((s: any) => s.confirmed)))
+    );
+    const prRaised = Boolean(
+      sparesObj && (sparesObj.purchase_request_raised || (Array.isArray(sparesObj) && sparesObj.some((s: any) => s.purchase_request_raised)))
+    );
+
+    if (sparesConfirmed) {
+      events.push({
+        id: `evt-spares-conf-${wo.id}`,
+        timestamp: sparesObj?.confirmed_at || wo.created_at,
+        type: 'spares_confirmed',
+        title: `Spares confirmed: ${wo.id}`,
+        description: `Stores In-charge confirmed parts reservation for machine ${wo.machine_id}`,
+        machineId: wo.machine_id,
+        workOrderId: wo.id,
+        alertId: wo.alert_id,
+        badge: {
+          label: 'Spares Ready',
+          variant: 'ok',
+        },
+      });
+    } else if (prRaised) {
+      events.push({
+        id: `evt-spares-pr-${wo.id}`,
+        timestamp: sparesObj?.requested_at || wo.created_at,
+        type: 'purchase_request_raised',
+        title: `Purchase request raised: ${wo.id}`,
+        description: `Stores In-charge raised PR for out-of-stock spares on machine ${wo.machine_id}`,
+        machineId: wo.machine_id,
+        workOrderId: wo.id,
+        alertId: wo.alert_id,
+        badge: {
+          label: 'PR Raised',
+          variant: 'warning',
+        },
+      });
+    }
+
+    // Window confirmation or reschedule
+    const winObj = wo.scheduled_window as any;
+    if (winObj && (winObj.confirmed || winObj.production_status === 'confirmed')) {
+      events.push({
+        id: `evt-win-conf-${wo.id}`,
+        timestamp: winObj.confirmed_at || wo.created_at,
+        type: 'window_confirmed',
+        title: `Window confirmed: ${wo.id}`,
+        description: `Production Manager confirmed slot: ${winObj.date || 'upcoming'} Shift ${winObj.shift || 'A'}`,
+        machineId: wo.machine_id,
+        workOrderId: wo.id,
+        alertId: wo.alert_id,
+        badge: {
+          label: 'Window Locked',
+          variant: 'ok',
+        },
+      });
+    } else if (winObj && winObj.production_status === 'reschedule_requested') {
+      events.push({
+        id: `evt-win-resched-${wo.id}`,
+        timestamp: winObj.requested_at || wo.created_at,
+        type: 'window_reschedule',
+        title: `Reschedule requested: ${wo.id}`,
+        description: `Production Manager requested new slot: "${winObj.reschedule_reason || 'Production conflict'}"`,
+        machineId: wo.machine_id,
+        workOrderId: wo.id,
+        alertId: wo.alert_id,
+        badge: {
+          label: 'Reschedule Req',
+          variant: 'warning',
+        },
+      });
+    }
+
     if (wo.loto_permit_no || wo.status === 'loto_applied' || wo.status === 'in_progress' || wo.status === 'closed') {
       events.push({
         id: `evt-loto-${wo.id}`,
@@ -299,7 +391,7 @@ export function getRecentActivityEvents(
         timestamp: wo.created_at,
         type: 'wo_started',
         title: `Work order in progress: ${wo.id}`,
-        description: `Task execution commenced on machine ${wo.machine_id}`,
+        description: `Task execution commenced by ${wo.assigned_technician || 'Technician'} on machine ${wo.machine_id}`,
         machineId: wo.machine_id,
         workOrderId: wo.id,
         alertId: wo.alert_id,
@@ -316,7 +408,7 @@ export function getRecentActivityEvents(
         timestamp: wo.closed_at,
         type: 'wo_closed',
         title: `Work order closed: ${wo.id} (Resolved)`,
-        description: `Root cause: ${wo.root_cause || 'Component repaired'}. Machine restored to nominal.`,
+        description: `Closed by ${wo.assigned_technician || 'Technician'}. Root cause: ${wo.root_cause || 'Component repaired'}. Machine restored to nominal.`,
         machineId: wo.machine_id,
         workOrderId: wo.id,
         alertId: wo.alert_id,

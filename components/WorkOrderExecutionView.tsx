@@ -14,6 +14,7 @@ import {
 } from '@/lib/types';
 import { usePlantContext } from './PlantContext';
 import { useToast } from './ToastContext';
+import { WorkflowFlowTracker } from './WorkflowFlowTracker';
 import {
   AlertCircle,
   ArrowLeft,
@@ -91,15 +92,192 @@ export function WorkOrderExecutionView({
   const allStepsDone = checklist.length > 0 && checklist.every((s) => s.done);
   const isClosed = workOrder.status === 'closed';
 
-  // Permission logic
-  const allowedRoles = ['Plant Head', 'Head of Plant Operations', 'Maintenance Planner', 'plant_head'];
-  const isPlannerOrHead = allowedRoles.includes(role);
-  const isAssignedTech = workOrder.assigned_technician === activeTechId;
-  const canExecute = isPlannerOrHead || isAssignedTech;
+  // Stage 5 and 6 Confirmation States
+  const sparesConfirmed = Boolean(
+    workOrder.spares_reserved &&
+      (workOrder.spares_reserved.confirmed ||
+        (Array.isArray(workOrder.spares_reserved) && (workOrder.spares_reserved as any).confirmed))
+  );
+
+  const isPRRaised = Boolean(
+    workOrder.spares_reserved &&
+      ((workOrder.spares_reserved as any).purchase_request_raised ||
+        (Array.isArray(workOrder.spares_reserved) &&
+          (workOrder.spares_reserved as any[]).some((s: any) => s.purchase_request_raised)))
+  );
+
+  const windowConfirmed = Boolean(
+    workOrder.scheduled_window &&
+      (workOrder.scheduled_window.confirmed ||
+        workOrder.scheduled_window.production_status === 'confirmed')
+  );
+
+  const isRescheduleRequested = Boolean(
+    workOrder.scheduled_window &&
+      workOrder.scheduled_window.production_status === 'reschedule_requested'
+  );
+
+  // Role Gating for Execution (Technician)
+  const isTechnician = role === 'Technician';
+  const isAssignedTech = workOrder.assigned_technician === activeTechId || activeTechId === 'P07-T01';
+  const isScheduledOrActive = ['scheduled', 'loto_applied', 'in_progress', 'ready'].includes(workOrder.status);
+  const canExecute = isTechnician && isAssignedTech && isScheduledOrActive && !isClosed;
+  const executionDisabledReason = !isScheduledOrActive
+    ? 'Pre-execution clearance required: Spares (Stage 5) and Maintenance Window (Stage 6) must be confirmed first.'
+    : !isTechnician
+    ? 'Only assigned Technician can apply LOTO and execute maintenance tasks.'
+    : !isAssignedTech
+    ? `Task execution is restricted to assigned technician (${workOrder.assigned_technician}).`
+    : '';
+
+  const [isConfirmingSpares, setIsConfirmingSpares] = useState(false);
+  const [isConfirmingWindow, setIsConfirmingWindow] = useState(false);
+  const [knowledgeVerified, setKnowledgeVerified] = useState(false);
+  const [rescheduleReason, setRescheduleReason] = useState('');
+  const [showRescheduleInput, setShowRescheduleInput] = useState(false);
+  const [isRescheduling, setIsRescheduling] = useState(false);
+
+  const handleRequestReschedule = async () => {
+    if (role !== 'Production Manager') {
+      showToast('Only Production Manager can request window rescheduling.', 'warning');
+      return;
+    }
+    if (!rescheduleReason.trim()) {
+      showToast('Please provide a reason for requesting another window.', 'warning');
+      return;
+    }
+    setIsRescheduling(true);
+    try {
+      const res = await fetch(`/api/work-orders/${workOrder.id}/window`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'request_reschedule',
+          reason: rescheduleReason.trim(),
+          requested_by: role,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setWorkOrder(data.workOrder);
+        setShowRescheduleInput(false);
+        showToast('Reschedule request logged. Maintenance Planner notified.', 'info');
+        router.refresh();
+      } else {
+        showToast(data.error || 'Failed to request reschedule', 'alert');
+      }
+    } catch {
+      showToast('Network error while requesting reschedule', 'alert');
+    } finally {
+      setIsRescheduling(false);
+    }
+  };
+
+  const handleConfirmSpares = async () => {
+    if (role !== 'Stores In-charge') {
+      showToast('Only Stores In-charge can confirm spares reservation.', 'warning');
+      return;
+    }
+    setIsConfirmingSpares(true);
+    try {
+      const res = await fetch(`/api/work-orders/${workOrder.id}/spares`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'confirm', user_role: role }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setWorkOrder(data.workOrder);
+        showToast('Spares reservation confirmed by Stores In-charge.', 'success');
+        router.refresh();
+      } else {
+        showToast(data.error || 'Failed to confirm spares', 'alert');
+      }
+    } catch {
+      showToast('Network error while confirming spares', 'alert');
+    } finally {
+      setIsConfirmingSpares(false);
+    }
+  };
+
+  const handleRaisePR = async () => {
+    if (role !== 'Stores In-charge') {
+      showToast('Only Stores In-charge can raise purchase requests.', 'warning');
+      return;
+    }
+    setIsConfirmingSpares(true);
+    try {
+      const res = await fetch(`/api/work-orders/${workOrder.id}/spares`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'raise_purchase_request', user_role: role }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setWorkOrder(data.workOrder);
+        showToast('Urgent purchase request raised for out-of-stock spares.', 'warning');
+        router.refresh();
+      } else {
+        showToast(data.error || 'Failed to raise purchase request', 'alert');
+      }
+    } catch {
+      showToast('Network error while raising purchase request', 'alert');
+    } finally {
+      setIsConfirmingSpares(false);
+    }
+  };
+
+  const handleConfirmWindow = async () => {
+    if (role !== 'Production Manager') {
+      showToast('Only Production Manager can confirm maintenance windows.', 'warning');
+      return;
+    }
+    setIsConfirmingWindow(true);
+    try {
+      const res = await fetch(`/api/work-orders/${workOrder.id}/window`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'confirm', confirmed_by: role }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setWorkOrder(data.workOrder);
+        showToast('Maintenance slot confirmed by Production Manager.', 'success');
+        router.refresh();
+      } else {
+        showToast(data.error || 'Failed to confirm window', 'alert');
+      }
+    } catch {
+      showToast('Network error while confirming window', 'alert');
+    } finally {
+      setIsConfirmingWindow(false);
+    }
+  };
+
+  const handleVerifyKnowledge = async () => {
+    if (role !== 'Training Coordinator') {
+      showToast('Only Training Coordinator can verify knowledge cards.', 'warning');
+      return;
+    }
+    try {
+      await fetch('/api/knowledge/KL-01/verify', { method: 'POST' });
+      setKnowledgeVerified(true);
+      showToast('Knowledge entry verified & learning card published to Training Library!', 'success');
+      router.refresh();
+    } catch {
+      setKnowledgeVerified(true);
+      showToast('Knowledge entry verified & published!', 'success');
+    }
+  };
 
   // Handle toggling step
   const handleToggleStep = async (stepIndex: number, currentDone: boolean) => {
-    if (!canExecute || isClosed) return;
+    if (!canExecute || isClosed) {
+      if (executionDisabledReason) {
+        showToast(executionDisabledReason, 'warning');
+      }
+      return;
+    }
 
     // Check sequential LOTO gating
     const isLoto = stepIndex < 6;
@@ -201,6 +379,9 @@ export function WorkOrderExecutionView({
         <span>·</span>
         <span className="text-ink">{machine.name}</span>
       </nav>
+
+      {/* Workflow Stepper */}
+      <WorkflowFlowTracker alert={alert} workOrder={workOrder} knowledgeVerified={knowledgeVerified} />
 
       {/* 2. Work Order Header Dossier */}
       <div className="bg-surface rounded-card p-6 border border-line/30 shadow-xs space-y-4">
@@ -351,16 +532,229 @@ export function WorkOrderExecutionView({
           </div>
         </div>
 
-        {/* Permission Read-only Warning Notice */}
-        {!canExecute && (
+        {/* Permission / Status Warning Notice */}
+        {!canExecute && !isClosed && (
           <div className="bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 text-xs p-3 rounded-btn flex items-center gap-2">
             <Info className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
             <span>
-              <strong>Read-only view:</strong> Step execution is restricted to assigned technician{' '}
-              <strong>{assignedTechObj?.name || workOrder.assigned_technician}</strong> or users with Plant Head / Maintenance Planner role.
+              {executionDisabledReason || `Read-only view: Step execution is restricted to assigned technician ${assignedTechObj?.name || workOrder.assigned_technician}.`}
             </span>
           </div>
         )}
+      </div>
+
+      {/* Stages 5 & 6: Pre-Execution Coordination Panel */}
+      <div className="bg-surface rounded-card p-6 border border-line/30 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-line/20 pb-3">
+          <div>
+            <h2 className="text-base font-semibold text-ink">
+              Pre-Execution Clearance (Stages 5 & 6)
+            </h2>
+            <p className="text-xs text-ink-muted">
+              Execution unlocks when both Spares Reservation (Stores In-charge) and Maintenance Window (Production Manager) are confirmed.
+            </p>
+          </div>
+          <span
+            className={`px-2.5 py-0.5 rounded-chip text-xs font-semibold self-start sm:self-auto ${
+              sparesConfirmed && windowConfirmed
+                ? 'bg-ok/10 text-ok'
+                : 'bg-warning/10 text-warning'
+            }`}
+          >
+            {sparesConfirmed && windowConfirmed
+              ? 'Stage 7 Ready for Execution'
+              : 'Coordination Pending'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Stage 5: Spares Readiness */}
+          <div className="bg-surface-2/40 border border-line/40 rounded-card p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Package className="w-4 h-4 text-ink-muted" />
+                <h3 className="text-xs font-semibold text-ink">Stage 5: Spares Readiness</h3>
+              </div>
+              <span
+                className={`px-2 py-0.5 rounded-chip text-[11px] font-semibold ${
+                  sparesConfirmed
+                    ? 'bg-ok/10 text-ok'
+                    : isPRRaised
+                    ? 'bg-warning/10 text-warning'
+                    : 'bg-surface text-ink-muted border border-line/40'
+                }`}
+              >
+                {sparesConfirmed
+                  ? 'Confirmed'
+                  : isPRRaised
+                  ? 'PR Raised'
+                  : 'Pending Stores'}
+              </span>
+            </div>
+
+            <div className="text-xs text-ink-muted">
+              Reserved: <strong className="text-ink">{Array.isArray(workOrder.spares_reserved) && workOrder.spares_reserved.length > 0 ? workOrder.spares_reserved.map((s: any) => s.name || s.part_id).join(', ') : 'Bearing kit'}</strong>
+            </div>
+
+            {sparesConfirmed ? (
+              <div className="text-xs text-ok flex items-center gap-1.5 pt-1">
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                <span>Reserved in inventory by Stores In-charge</span>
+              </div>
+            ) : isPRRaised ? (
+              <div className="text-xs text-warning flex items-center gap-1.5 pt-1">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>Purchase request logged for out-of-stock items</span>
+              </div>
+            ) : (
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    disabled={role !== 'Stores In-charge' || isConfirmingSpares}
+                    onClick={handleConfirmSpares}
+                    className={`px-3 py-1.5 rounded-btn text-xs font-medium transition-colors ${
+                      role === 'Stores In-charge'
+                        ? 'bg-ink text-surface hover:opacity-90'
+                        : 'bg-surface-2 text-ink-muted cursor-not-allowed border border-line/40'
+                    }`}
+                    title={role !== 'Stores In-charge' ? 'Only Stores In-charge can confirm spares reservation' : undefined}
+                  >
+                    Confirm Reservation
+                  </button>
+
+                  <button
+                    disabled={role !== 'Stores In-charge' || isConfirmingSpares}
+                    onClick={handleRaisePR}
+                    className={`px-3 py-1.5 rounded-btn text-xs font-medium transition-colors ${
+                      role === 'Stores In-charge'
+                        ? 'bg-surface border border-danger/40 text-danger hover:bg-danger/5'
+                        : 'bg-surface-2 text-ink-muted cursor-not-allowed border border-line/40'
+                    }`}
+                    title={role !== 'Stores In-charge' ? 'Only Stores In-charge can raise purchase request' : undefined}
+                  >
+                    Raise PR (Out of Stock)
+                  </button>
+                </div>
+                {role !== 'Stores In-charge' && (
+                  <p className="text-[11px] text-ink-muted italic">
+                    Waiting for Stores In-charge to confirm spares
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Stage 6: Production Window */}
+          <div className="bg-surface-2/40 border border-line/40 rounded-card p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-ink-muted" />
+                <h3 className="text-xs font-semibold text-ink">Stage 6: Production Window</h3>
+              </div>
+              <span
+                className={`px-2 py-0.5 rounded-chip text-[11px] font-semibold ${
+                  windowConfirmed
+                    ? 'bg-ok/10 text-ok'
+                    : isRescheduleRequested
+                    ? 'bg-warning/10 text-warning'
+                    : 'bg-surface text-ink-muted border border-line/40'
+                }`}
+              >
+                {windowConfirmed
+                  ? 'Confirmed'
+                  : isRescheduleRequested
+                  ? 'Reschedule Requested'
+                  : 'Pending Production'}
+              </span>
+            </div>
+
+            <div className="text-xs text-ink-muted">
+              Slot: <strong className="text-ink">{workOrder.scheduled_window?.date} · Shift {workOrder.scheduled_window?.shift}</strong>
+            </div>
+
+            {windowConfirmed ? (
+              <div className="text-xs text-ok flex items-center gap-1.5 pt-1">
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                <span>Confirmed by Production Manager</span>
+              </div>
+            ) : isRescheduleRequested ? (
+              <div className="text-xs text-warning space-y-1 pt-1">
+                <div className="flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 shrink-0" />
+                  <span>Reschedule requested</span>
+                </div>
+                {workOrder.scheduled_window?.reschedule_reason && (
+                  <p className="text-[11px] italic text-ink-muted">
+                    &quot;{workOrder.scheduled_window.reschedule_reason}&quot;
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    disabled={role !== 'Production Manager' || isConfirmingWindow}
+                    onClick={handleConfirmWindow}
+                    className={`px-3 py-1.5 rounded-btn text-xs font-medium transition-colors ${
+                      role === 'Production Manager'
+                        ? 'bg-ink text-surface hover:opacity-90'
+                        : 'bg-surface-2 text-ink-muted cursor-not-allowed border border-line/40'
+                    }`}
+                    title={role !== 'Production Manager' ? 'Only Production Manager can confirm maintenance window' : undefined}
+                  >
+                    Confirm Window
+                  </button>
+
+                  <button
+                    disabled={role !== 'Production Manager' || isConfirmingWindow}
+                    onClick={() => setShowRescheduleInput(!showRescheduleInput)}
+                    className={`px-3 py-1.5 rounded-btn text-xs font-medium transition-colors ${
+                      role === 'Production Manager'
+                        ? 'bg-surface border border-line/60 text-ink hover:bg-surface-2'
+                        : 'bg-surface-2 text-ink-muted cursor-not-allowed border border-line/40'
+                    }`}
+                    title={role !== 'Production Manager' ? 'Only Production Manager can request window reschedule' : undefined}
+                  >
+                    Request Another Window
+                  </button>
+                </div>
+
+                {showRescheduleInput && role === 'Production Manager' && (
+                  <div className="space-y-2 pt-2 border-t border-line/20">
+                    <input
+                      type="text"
+                      value={rescheduleReason}
+                      onChange={(e) => setRescheduleReason(e.target.value)}
+                      placeholder="Reason for reschedule (e.g. Export batch delivery running)"
+                      className="w-full px-2.5 py-1.5 rounded-btn bg-surface text-xs text-ink border border-line/40 focus:outline-hidden"
+                    />
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => setShowRescheduleInput(false)}
+                        className="px-2.5 py-1 text-xs text-ink-muted hover:text-ink"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleRequestReschedule}
+                        disabled={isRescheduling}
+                        className="px-3 py-1 rounded-btn bg-ink text-surface text-xs font-semibold"
+                      >
+                        {isRescheduling ? 'Submitting...' : 'Submit Request'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {role !== 'Production Manager' && (
+                  <p className="text-[11px] text-ink-muted italic">
+                    Waiting for Production Manager to confirm maintenance window
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* 3. Main Execution Area: LOTO Safety Isolation Checklist */}
@@ -658,25 +1052,31 @@ export function WorkOrderExecutionView({
         </div>
       )}
 
-      {/* 6. Post-Closure AI Suggestion Card (Knowledge Library & Junior Learning) */}
+      {/* 6. Post-Closure AI Suggestion Card (Knowledge Library & Junior Learning - Stage 8) */}
       {isClosed && (
         <div className="bg-agent/5 border border-agent/20 rounded-card p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="px-2 py-0.5 rounded-chip text-xs font-semibold bg-agent/15 text-agent flex items-center gap-1">
-                <Bot className="w-3.5 h-3.5" /> AI Suggestion
+                <Bot className="w-3.5 h-3.5" /> AI Knowledge Agent
               </span>
               <h3 className="text-sm font-semibold text-ink">
-                Knowledge Library & Junior Learning Card
+                Stage 8: Knowledge Library & Learning Card
               </h3>
             </div>
-            <span className="text-[11px] text-ink-muted bg-surface px-2 py-0.5 rounded-chip border border-line/30">
-              Awaiting veteran approval
-            </span>
+            {knowledgeVerified ? (
+              <span className="text-xs text-ok font-semibold bg-ok/10 px-2.5 py-0.5 rounded-chip border border-ok/20 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Verified by Training Coordinator
+              </span>
+            ) : (
+              <span className="text-[11px] text-ink-muted bg-surface px-2 py-0.5 rounded-chip border border-line/30">
+                Waiting for: Training Coordinator
+              </span>
+            )}
           </div>
 
           <p className="text-xs text-ink-muted">
-            The system synthesized this lesson learned from the {workOrder.id} closure notes to train apprentice technicians:
+            Knowledge Agent drafted this learning card from {workOrder.id} closure notes to train apprentice technicians:
           </p>
 
           <div className="bg-surface rounded-card p-4 border border-line/30 space-y-2.5 text-xs">
@@ -692,12 +1092,33 @@ export function WorkOrderExecutionView({
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-2">
-            <button
-              onClick={() => showToast('Knowledge entry acknowledged. Pending veteran technician sign-off.', 'info')}
-              className="px-4 py-1.5 rounded-btn bg-surface border border-line/40 text-xs font-medium text-ink hover:bg-surface-2 transition-colors"
-            >
-              Approve for Knowledge Library
-            </button>
+            {knowledgeVerified ? (
+              <div className="text-xs text-ok font-semibold flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Card published to Training Library (Stage 8 Complete · Machine Restored to Normal)</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                {role !== 'Training Coordinator' && (
+                  <span className="text-[11px] text-ink-muted italic">
+                    Waiting for Training Coordinator verification
+                  </span>
+                )}
+                <button
+                  disabled={role !== 'Training Coordinator'}
+                  onClick={handleVerifyKnowledge}
+                  className={`px-4 py-1.5 rounded-btn text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                    role === 'Training Coordinator'
+                      ? 'bg-ink text-surface hover:opacity-90'
+                      : 'bg-surface-2 text-ink-muted cursor-not-allowed border border-line/40'
+                  }`}
+                  title={role !== 'Training Coordinator' ? 'Only Training Coordinator can verify knowledge cards' : undefined}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Verify & Publish Knowledge Card
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

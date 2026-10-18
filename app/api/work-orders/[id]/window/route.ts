@@ -77,6 +77,7 @@ export async function POST(
       updatedWindow = {
         ...currentWindow,
         production_status: 'confirmed',
+        confirmed: true,
         reschedule_reason: null,
         confirmed_by: body.confirmed_by || 'Production Manager',
         confirmed_at: new Date().toISOString(),
@@ -98,6 +99,7 @@ export async function POST(
       updatedWindow = {
         ...currentWindow,
         production_status: 'reschedule_requested',
+        confirmed: false,
         reschedule_reason: reason,
         requested_by: body.requested_by || 'Production Manager',
         requested_at: new Date().toISOString(),
@@ -113,15 +115,28 @@ export async function POST(
       );
     }
 
+    // Check if spares are already confirmed
+    const sparesConfirmed = Boolean(
+      wo.spares_reserved &&
+        (wo.spares_reserved.confirmed ||
+          (Array.isArray(wo.spares_reserved) && (wo.spares_reserved as any).confirmed))
+    );
+
+    let newStatus = wo.status;
+    if (body.action === 'confirm' && sparesConfirmed && (wo.status === 'approved' || wo.status === 'raised')) {
+      newStatus = 'scheduled';
+    }
+
     // 2. Persist update to local in-memory store
     let updatedWo = mutateLocalWorkOrder(targetId, {
       scheduled_window: updatedWindow,
+      status: newStatus,
     });
 
     if (!updatedWo) {
       const store = getLocalStoreData();
       const workOrders = (store.work_orders as any[]) || [];
-      const updatedItem = { ...wo, scheduled_window: updatedWindow };
+      const updatedItem = { ...wo, scheduled_window: updatedWindow, status: newStatus };
       workOrders.push(updatedItem);
       store.work_orders = workOrders;
       saveLocalStoreData(store);
@@ -135,7 +150,7 @@ export async function POST(
       if (admin) {
         await admin
           .from('work_orders')
-          .update({ scheduled_window: updatedWindow })
+          .update({ scheduled_window: updatedWindow, status: newStatus })
           .or(`id.eq.${targetId},id.ilike.${targetId}`);
       }
     } catch (e) {

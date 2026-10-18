@@ -21,6 +21,7 @@ import {
   STANDARD_LOTO_CHECKLIST,
 } from '@/lib/guardrails';
 import { formatFailureMode, formatObservationTag } from '@/lib/lifecycle';
+import { WorkflowFlowTracker } from './WorkflowFlowTracker';
 
 const TAXONOMY_FAILURE_MODES = [
   'bearing_wear',
@@ -132,10 +133,16 @@ export function AlertDetailView({
     );
   }, [alert, selectedFailureModeOverride, selectedTechOverride, machine.criticality, technicians, certifications, liveSpares, role]);
 
-  // Check role authorization for Criticality A + P1
-  const isCritAP1 = machine.criticality === 'A' && alert.urgency === 'P1';
-  const isAuthorizedRole = role === 'Plant Head' || role === 'Head of Plant Operations';
-  const requiresPlantHeadApproval = isCritAP1 && !isAuthorizedRole;
+  // Check role authorization for Criticality A + P1 and workflow stage
+  const isP1CritA = machine.criticality === 'A' && alert.urgency === 'P1';
+  const isSentToPlantHead =
+    alert.decision_reason === 'sent_to_plant_head' ||
+    Boolean(alert.decided_by && alert.decided_by.toLowerCase().includes('plant head'));
+  const isPlanner = role === 'Maintenance Planner';
+  const isPlantHead = role === 'Plant Head' || role === 'Head of Plant Operations';
+  const isShadow = plant?.status === 'shadow';
+  const isAuthorizedRole = isPlantHead;
+  const requiresPlantHeadApproval = isP1CritA && !isAuthorizedRole;
 
   // Qualified, certified, and shift-matched technicians only (for Correct and re-check)
   const eligibleTechnicians = useMemo(() => {
@@ -283,6 +290,38 @@ export function AlertDetailView({
     }
   };
 
+  const [isSendingToPlantHead, setIsSendingToPlantHead] = useState(false);
+
+  // Handler: Forward P1 Criticality A alert to Plant Head
+  const handleSendToPlantHead = async () => {
+    setIsSendingToPlantHead(true);
+    try {
+      const res = await fetch(`/api/alerts/${alert.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'needs_review',
+          decided_by: 'Maintenance Planner (sent to Plant Head)',
+          decision_reason: 'sent_to_plant_head',
+          assigned_technician: selectedTechOverride || alert.assigned_technician,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setAlert(data.alert);
+        showToast('Alert forwarded to Plant Head for high-risk approval.', 'success');
+        router.refresh();
+      } else {
+        showToast(data.error || 'Failed to forward alert', 'alert');
+      }
+    } catch {
+      showToast('Network error while forwarding alert', 'alert');
+    } finally {
+      setIsSendingToPlantHead(false);
+    }
+  };
+
   // Handler: Reject Alert
   const handleReject = async () => {
     if (!rejectReason.trim()) {
@@ -369,6 +408,12 @@ export function AlertDetailView({
           {machine.name} ({machine.id})
         </Link>
       </nav>
+
+      {/* Horizontal Workflow Stepper Tracker */}
+      <WorkflowFlowTracker
+        alert={alert}
+        workOrder={existingWorkOrder || createdWorkOrder}
+      />
 
       {/* 2. Top Alert Header Card */}
       <div className="bg-surface rounded-card p-6 border border-line/30 shadow-xs space-y-4">
@@ -796,49 +841,128 @@ export function AlertDetailView({
               </p>
 
               <div className="space-y-2 pt-2">
-                <button
-                  onClick={handleApprove}
-                  disabled={isApproving || requiresPlantHeadApproval || !guardrailOutcome.pass}
-                  className={`w-full py-2.5 rounded-btn text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
-                    requiresPlantHeadApproval || !guardrailOutcome.pass
-                      ? 'bg-surface-2 text-ink-muted cursor-not-allowed opacity-60'
-                      : 'bg-ink text-canvas hover:opacity-90 shadow-xs'
-                  }`}
-                >
-                  <Check className="w-4 h-4" />
-                  <span>{isApproving ? 'Approving...' : 'Approve & Schedule Work Order'}</span>
-                </button>
+                {isShadow ? (
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full py-2.5 rounded-btn text-xs font-semibold flex items-center justify-center gap-2 bg-surface-2 text-ink-muted cursor-not-allowed opacity-60"
+                    >
+                      <span>Compare with outcome (Shadow mode)</span>
+                    </button>
+                    <p className="text-[11px] text-ink-muted leading-relaxed">
+                      Shadow plant: Recommendations are logged for comparison with technician outcomes, not dispatched.
+                    </p>
+                  </div>
+                ) : isP1CritA ? (
+                  !isSentToPlantHead ? (
+                    // Stage 3: Planner reviews P1 Criticality A and forwards to Plant Head
+                    <div className="space-y-2">
+                      <button
+                        onClick={handleSendToPlantHead}
+                        disabled={isSendingToPlantHead || !isPlanner || !guardrailOutcome.pass}
+                        className={`w-full py-2.5 rounded-btn text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
+                          !isPlanner || !guardrailOutcome.pass
+                            ? 'bg-surface-2 text-ink-muted cursor-not-allowed opacity-60'
+                            : 'bg-ink text-canvas hover:opacity-90 shadow-xs'
+                        }`}
+                      >
+                        <ShieldAlert className="w-4 h-4 text-warning" />
+                        <span>{isSendingToPlantHead ? 'Sending to Plant Head...' : 'Send to Plant Head'}</span>
+                      </button>
 
-                {/* Show explanation why disabled */}
-                {(!guardrailOutcome.pass || requiresPlantHeadApproval) && (
-                  <div className="p-2.5 rounded-btn bg-surface-2/60 border border-line/30 space-y-1">
-                    {!guardrailOutcome.pass && (
-                      <p className="text-[11px] text-warning flex items-start gap-1.5 font-medium leading-relaxed">
-                        <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                        <span>
-                          Approve is disabled: Guardrail checks failed ({guardrailOutcome.checks.filter(c => !c.pass).map(c => c.rule.replace(/_/g, ' ')).join(', ')}). Use &quot;Correct and re-check&quot; below to fix.
-                        </span>
+                      {(!isPlanner || !guardrailOutcome.pass) && (
+                        <p className="text-[11px] text-warning font-medium leading-relaxed">
+                          {!isPlanner
+                            ? 'Only Maintenance Planner can forward Criticality A alerts to Plant Head.'
+                            : 'Resolve guardrail verification issues below before forwarding to Plant Head.'}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    // Stage 4: Plant Head approves or rejects
+                    <div className="space-y-2">
+                      <button
+                        onClick={handleApprove}
+                        disabled={isApproving || !isPlantHead || !guardrailOutcome.pass}
+                        className={`w-full py-2.5 rounded-btn text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
+                          !isPlantHead || !guardrailOutcome.pass
+                            ? 'bg-surface-2 text-ink-muted cursor-not-allowed opacity-60'
+                            : 'bg-ink text-canvas hover:opacity-90 shadow-xs'
+                        }`}
+                      >
+                        <Check className="w-4 h-4" />
+                        <span>{isApproving ? 'Approving...' : 'Approve Work Order'}</span>
+                      </button>
+
+                      {(!isPlantHead || !guardrailOutcome.pass) && (
+                        <p className="text-[11px] text-danger font-medium leading-relaxed">
+                          {!isPlantHead
+                            ? 'Only Plant Head has authority to approve P1 alerts on Criticality A assets.'
+                            : 'Resolve guardrail issues below before approval.'}
+                        </p>
+                      )}
+
+                      <button
+                        onClick={() => setShowRejectModal(true)}
+                        disabled={isRejecting || !isPlantHead}
+                        className={`w-full py-2 rounded-btn border border-line/40 text-xs font-medium transition-colors flex items-center justify-center gap-2 ${
+                          !isPlantHead ? 'opacity-50 cursor-not-allowed text-ink-muted' : 'hover:bg-surface-2 text-ink'
+                        }`}
+                      >
+                        <XCircle className="w-4 h-4 text-ink-muted" />
+                        <span>Reject Alert with Reason</span>
+                      </button>
+
+                      {!isPlantHead && (
+                        <p className="text-[11px] text-ink-muted">
+                          Only Plant Head can reject P1 alerts on Criticality A assets.
+                        </p>
+                      )}
+                    </div>
+                  )
+                ) : (
+                  // P2 / P3 or non-Criticality A: Maintenance Planner approves
+                  <div className="space-y-2">
+                    <button
+                      onClick={handleApprove}
+                      disabled={isApproving || (!isPlanner && !isPlantHead) || !guardrailOutcome.pass}
+                      className={`w-full py-2.5 rounded-btn text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
+                        (!isPlanner && !isPlantHead) || !guardrailOutcome.pass
+                          ? 'bg-surface-2 text-ink-muted cursor-not-allowed opacity-60'
+                          : 'bg-ink text-canvas hover:opacity-90 shadow-xs'
+                      }`}
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>{isApproving ? 'Approving...' : 'Approve & Schedule Work Order'}</span>
+                    </button>
+
+                    {((!isPlanner && !isPlantHead) || !guardrailOutcome.pass) && (
+                      <p className="text-[11px] text-warning font-medium leading-relaxed">
+                        {!isPlanner && !isPlantHead
+                          ? 'Only Maintenance Planner can approve P2/P3 alerts.'
+                          : 'Resolve guardrail issues below before approval.'}
                       </p>
                     )}
-                    {requiresPlantHeadApproval && (
-                      <p className="text-[11px] text-danger flex items-start gap-1.5 font-medium leading-relaxed">
-                        <ShieldAlert className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                        <span>
-                          Approve is disabled: Criticality A asset with P1 urgency requires Plant Head approval.
-                        </span>
+
+                    <button
+                      onClick={() => setShowRejectModal(true)}
+                      disabled={isRejecting || (!isPlanner && !isPlantHead)}
+                      className={`w-full py-2 rounded-btn border border-line/40 text-xs font-medium transition-colors flex items-center justify-center gap-2 ${
+                        !isPlanner && !isPlantHead ? 'opacity-50 cursor-not-allowed text-ink-muted' : 'hover:bg-surface-2 text-ink'
+                      }`}
+                    >
+                      <XCircle className="w-4 h-4 text-ink-muted" />
+                      <span>Reject Alert with Reason</span>
+                    </button>
+
+                    {!isPlanner && !isPlantHead && (
+                      <p className="text-[11px] text-ink-muted">
+                        Only Maintenance Planner can reject alerts.
                       </p>
                     )}
                   </div>
                 )}
-
-                <button
-                  onClick={() => setShowRejectModal(true)}
-                  disabled={isRejecting}
-                  className="w-full py-2 rounded-btn border border-line/40 hover:bg-surface-2 text-xs font-medium text-ink transition-colors flex items-center justify-center gap-2"
-                >
-                  <XCircle className="w-4 h-4 text-ink-muted" />
-                  <span>Reject Alert with Reason</span>
-                </button>
 
                 {canRerunTriage && (
                   <button
