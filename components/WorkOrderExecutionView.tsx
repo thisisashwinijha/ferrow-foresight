@@ -298,8 +298,28 @@ export function WorkOrderExecutionView({
             <span className="text-[11px] text-ink-muted">Scheduled Window</span>
             <div className="font-medium text-ink flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-ink-muted" />
-              <span>{workOrder.scheduled_window?.date} · {workOrder.scheduled_window?.shift}</span>
+              <span>{workOrder.scheduled_window?.date} · Shift {workOrder.scheduled_window?.shift}</span>
             </div>
+            {workOrder.scheduled_window?.production_status && (
+              <div className="pt-0.5">
+                <span
+                  className={`inline-flex px-1.5 py-0.2 rounded-chip text-[10px] font-semibold ${
+                    workOrder.scheduled_window.production_status === 'confirmed'
+                      ? 'bg-ok/10 text-ok'
+                      : 'bg-warning/10 text-warning'
+                  }`}
+                >
+                  {workOrder.scheduled_window.production_status === 'confirmed'
+                    ? 'Window confirmed'
+                    : 'Reschedule requested'}
+                </span>
+                {workOrder.scheduled_window.reschedule_reason && (
+                  <p className="text-[10px] text-warning italic mt-0.5">
+                    &quot;{workOrder.scheduled_window.reschedule_reason}&quot;
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="space-y-0.5">

@@ -1,14 +1,38 @@
-import { ComingSoonPage } from '@/components/ComingSoonPage';
+import { getProductionSchedule } from '@/lib/data/production';
+import { getLines } from '@/lib/data/lines';
+import { getWorkOrders } from '@/lib/data/workOrders';
+import { getAllMachines } from '@/lib/data/machines';
+import { getPlants, getPlantById } from '@/lib/data/plants';
+import { ProductionCoordinationView } from '@/components/ProductionCoordinationView';
+import { unstable_noStore as noStore } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export default function ProductionCoordinationPage() {
+export default async function ProductionPage({
+  searchParams,
+}: {
+  searchParams?: { plant?: string; line?: string };
+}) {
+  noStore();
+  const activePlantId = searchParams?.plant || 'P-07';
+  const activeLineId = searchParams?.line;
+
+  const [productionSchedule, lines, workOrders, machines, plant] = await Promise.all([
+    getProductionSchedule(activePlantId, activeLineId),
+    getLines(activePlantId),
+    getWorkOrders(activePlantId, activeLineId),
+    getAllMachines(activePlantId),
+    getPlantById(activePlantId),
+  ]);
+
   return (
-    <ComingSoonPage
-      module="Production Coordination"
-      route="/production"
-      description="14-day x 3-line x 3-shift grid, window types colour-coded, scheduled maintenance overlaid, production loss per proposed slot"
+    <ProductionCoordinationView
+      initialSchedule={productionSchedule}
+      lines={lines}
+      workOrders={workOrders}
+      machines={machines}
+      plant={plant}
     />
   );
 }
