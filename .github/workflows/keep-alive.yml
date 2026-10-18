@@ -1,0 +1,18 @@
+name: Keep-Alive Supabase Ping
+
+on:
+  schedule:
+    # Run once daily at 06:00 UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Ping Health Endpoint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /api/health
+        run: |
+          echo "Pinging Ferrow Foresight health endpoint..."
+          response=$(curl -f -s -S --max-time 15 "https://ferrow-foresight.vercel.app/api/health")
+          echo "Response: $response"
