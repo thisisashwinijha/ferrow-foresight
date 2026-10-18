@@ -42,6 +42,11 @@ export async function getPlantById(id: string): Promise<Plant | undefined> {
   return plants.find((p) => p.id === id);
 }
 
+export function getOnboardedPlantsSync(): Plant[] {
+  const all = getPlantsSync();
+  return all.filter((p) => p.status === 'pilot' || p.status === 'shadow');
+}
+
 export async function getOnboardedPlants(plantId?: string, lineId?: string): Promise<Plant[]> {
   const plants = await getPlants(plantId, lineId);
   return plants.filter((p) => p.status === 'pilot' || p.status === 'shadow');

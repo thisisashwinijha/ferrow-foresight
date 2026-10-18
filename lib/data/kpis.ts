@@ -1,9 +1,12 @@
 import { getSeedData, queryWithFallback } from './db';
 import { KpiSnapshot } from '../types';
 
-export function getKpiSnapshotsSync(plantId: string, lineId?: string): KpiSnapshot[] {
+export function getKpiSnapshotsSync(plantId?: string, lineId?: string): KpiSnapshot[] {
   const data = getSeedData();
   const snapshots: KpiSnapshot[] = data.kpi_snapshots || [];
+  if (!plantId || plantId === 'all') {
+    return [...snapshots].sort((a, b) => a.month.localeCompare(b.month));
+  }
   return snapshots
     .filter((s) => s.plant_id === plantId)
     .sort((a, b) => a.month.localeCompare(b.month));
@@ -20,7 +23,7 @@ export function getPreviousKpiSnapshotSync(plantId: string): KpiSnapshot | undef
   return snapshots[snapshots.length - 2];
 }
 
-export async function getKpiSnapshots(plantId: string, lineId?: string): Promise<KpiSnapshot[]> {
+export async function getKpiSnapshots(plantId?: string, lineId?: string): Promise<KpiSnapshot[]> {
   return queryWithFallback<KpiSnapshot[]>(
     async (client) => {
       let query = client.from('kpi_snapshots').select('*');
