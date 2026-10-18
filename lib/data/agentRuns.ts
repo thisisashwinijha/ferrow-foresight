@@ -117,3 +117,60 @@ export async function getAgentStatistics() {
 
   return statsByAgent;
 }
+
+export async function getLastAgentErrors(limit = 5): Promise<
+  Array<{
+    id: string;
+    agent: string;
+    step: string;
+    error: string;
+    created_at: string;
+  }>
+> {
+  const runs = await getAgentRuns(200);
+  const errors: Array<{
+    id: string;
+    agent: string;
+    step: string;
+    error: string;
+    created_at: string;
+  }> = [];
+
+  for (const r of runs) {
+    if (r.error || r.status === 'failure') {
+      errors.push({
+        id: r.id || `ERR-${errors.length + 1}`,
+        agent: r.agent || 'Agent',
+        step: r.step || 'Execution',
+        error: r.error || 'Execution failed',
+        created_at: r.created_at || new Date().toISOString(),
+      });
+      if (errors.length >= limit) break;
+    }
+  }
+
+  return errors;
+}
+
+export async function getLastMakeRun(): Promise<{
+  timestamp: string | null;
+  status: string;
+  latency_ms: number;
+} | null> {
+  const runs = await getAgentRuns(200);
+  for (const r of runs) {
+    const isMake =
+      r.input?.provider === 'make' ||
+      r.output?.provider === 'make' ||
+      r.model === 'make-webhook' ||
+      r.agent === 'make';
+    if (isMake && r.status === 'success') {
+      return {
+        timestamp: r.created_at || null,
+        status: 'Operational',
+        latency_ms: r.latency_ms || 0,
+      };
+    }
+  }
+  return null;
+}
