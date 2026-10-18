@@ -47,6 +47,7 @@ describe('Agent Fallback Chain (Step 12 Tests)', () => {
       schema_valid: true,
       guardrail_pass: true,
       fallback_used: true,
+      fallback_chain: ['cached'],
       cached_note: 'Live AI busy, showing last validated recommendation',
     });
   });
@@ -65,7 +66,6 @@ describe('Agent Fallback Chain (Step 12 Tests)', () => {
     vi.mocked(makeModule.callMakeProvider).mockResolvedValueOnce({
       success: true,
       rawText: validPlannerJson,
-      provider: 'make',
       model: 'make-scenario',
       latency_ms: 120,
     });
@@ -87,7 +87,7 @@ describe('Agent Fallback Chain (Step 12 Tests)', () => {
     vi.mocked(makeModule.callMakeProvider).mockResolvedValueOnce({
       success: false,
       error: 'Make webhook timed out',
-      provider: 'make',
+      model: 'make-scenario',
       latency_ms: 25000,
     });
 
@@ -95,7 +95,6 @@ describe('Agent Fallback Chain (Step 12 Tests)', () => {
     vi.mocked(directModule.callDirectProvider).mockResolvedValueOnce({
       success: true,
       rawText: validPlannerJson,
-      provider: 'direct',
       model: 'gemini-flash-lite-latest',
       latency_ms: 450,
     });
@@ -118,21 +117,24 @@ describe('Agent Fallback Chain (Step 12 Tests)', () => {
     vi.mocked(makeModule.callMakeProvider).mockResolvedValueOnce({
       success: false,
       error: 'Make HTTP 500',
-      provider: 'make',
+      model: 'make-scenario',
+      latency_ms: 100,
     });
 
     // Direct fails
     vi.mocked(directModule.callDirectProvider).mockResolvedValueOnce({
       success: false,
       error: 'Direct API quota exceeded (HTTP 429)',
-      provider: 'direct',
+      model: 'gemini-flash-lite-latest',
+      latency_ms: 100,
     });
 
     // Direct fallback model fails
     vi.mocked(directModule.callDirectProvider).mockResolvedValueOnce({
       success: false,
       error: 'Direct fallback quota exceeded (HTTP 429)',
-      provider: 'direct_fallback',
+      model: 'gemini-flash-latest',
+      latency_ms: 100,
     });
 
     const result = await executeAgent({

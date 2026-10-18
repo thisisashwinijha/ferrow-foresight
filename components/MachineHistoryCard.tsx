@@ -727,7 +727,7 @@ export function MachineHistoryCard({
           {activeTab === 'spares' && (
             <div className="space-y-4">
               {spares.length === 0 ? (
-                <p className="text-xs text-ink-muted py-8 text-center">No compatible spares found for equipment type "{machine.type}".</p>
+                <p className="text-xs text-ink-muted py-8 text-center">No compatible spares found for equipment type &quot;{machine.type}&quot;.</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left">
@@ -789,7 +789,7 @@ export function MachineHistoryCard({
           {activeTab === 'knowledge' && (
             <div className="space-y-4">
               {knowledge.length === 0 ? (
-                <p className="text-xs text-ink-muted py-8 text-center">No veteran knowledge records registered for type "{machine.type}".</p>
+                <p className="text-xs text-ink-muted py-8 text-center">No veteran knowledge records registered for type &quot;{machine.type}&quot;.</p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {knowledge.map((item) => (

@@ -1,4 +1,4 @@
-import { describe, it, failure_mode, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { parseAgentResponse, stripCodeFences, extractJsonString } from '../lib/agents/parser';
 
 describe('Agent Parser (Step 12 Tests)', () => {

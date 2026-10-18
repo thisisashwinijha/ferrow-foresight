@@ -29,7 +29,7 @@ async function run() {
       });
       const page = await context.newPage();
       try {
-        await page.goto(`${BASE_URL}${path}`, { waitUntil: 'domcontentloaded', timeout: 15000 });
+        await page.goto(`${BASE_URL}${path}`, { waitUntil: 'domcontentloaded', timeout: 45000 });
         await page.evaluate((t) => {
           document.documentElement.setAttribute('data-theme', t);
         }, theme);

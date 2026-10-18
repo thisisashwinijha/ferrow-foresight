@@ -29,3 +29,4 @@ yarn-error.log*
 
 # Local state
 data/local_state.json
+*.tsbuildinfo

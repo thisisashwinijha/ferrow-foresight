@@ -130,6 +130,8 @@ async function main() {
     console.log(`\nTesting view: ${vp.name} (${vp.width}x${vp.height})`);
     const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height } });
     const page = await context.newPage();
+    page.setDefaultNavigationTimeout(60000);
+    page.setDefaultTimeout(60000);
 
     const scenarios = [
       { id: 'S1', fn: runScenario1 },

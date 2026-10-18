@@ -269,21 +269,21 @@ export function MyTasksView({
     }
 
     // Low stock items needing purchase request
-    const lowStock = initialSpares.filter((s) => s.quantity_on_hand <= s.min_stock_level);
+    const lowStock = initialSpares.filter((s) => s.stock <= s.min_level);
     for (const spare of lowStock.slice(0, 3)) {
       tasks.push({
         id: `task-stock-${spare.id}`,
         stage: 5,
         title: `Low Stock Alert · ${spare.name}`,
-        subtitle: `Inventory level (${spare.quantity_on_hand} ${spare.unit}) is at or below reorder threshold (${spare.min_stock_level} ${spare.unit}).`,
+        subtitle: `Inventory level (${spare.stock} units) is at or below reorder threshold (${spare.min_level} units).`,
         badge: {
           label: 'Reorder Flagged',
           variant: 'alarm',
         },
         meta: [
-          `Part ID: ${spare.part_id}`,
-          `Location: ${spare.location}`,
-          `Stock: ${spare.quantity_on_hand} / Min: ${spare.min_stock_level}`,
+          `Part No: ${spare.part_no}`,
+          `Lead time: ${spare.lead_time_days} days`,
+          `Stock: ${spare.stock} / Min: ${spare.min_level}`,
         ],
         actionLabel: 'Open Spares Management',
         actionHref: `/spares`,

@@ -600,7 +600,7 @@ export function AlertDetailView({
               <span>Alert Rejected by {alert.decided_by || 'Supervisor'}</span>
             </div>
             <p className="text-ink-muted pl-6">
-              Reason: "{alert.decision_reason || 'No reason specified'}"
+              Reason: &quot;{alert.decision_reason || 'No reason specified'}&quot;
             </p>
           </div>
         )}

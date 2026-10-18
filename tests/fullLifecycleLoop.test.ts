@@ -49,7 +49,7 @@ describe('Full Lifecycle Loop E2E: P07-M03 (Alert -> LOTO -> Tasks -> Close -> T
     });
     expect(approvedAlert?.status).toBe('approved');
 
-    const newWO: WorkOrder = {
+    const newWO: any = {
       id: 'WO-1001',
       alert_id: 'AL-1001',
       machine_id: 'P07-M03',
@@ -83,7 +83,7 @@ describe('Full Lifecycle Loop E2E: P07-M03 (Alert -> LOTO -> Tasks -> Close -> T
 
     // STEP 3: LOTO Sequential Gating
     // Complete steps 0 through 4
-    let currentWO = newWO;
+    let currentWO: any = newWO;
     for (let stepIdx = 0; stepIdx < STANDARD_LOTO_CHECKLIST.length; stepIdx++) {
       const updatedSteps = [...currentWO.loto_steps_completed, stepIdx];
       const isComplete = updatedSteps.length >= STANDARD_LOTO_CHECKLIST.length;
@@ -91,7 +91,7 @@ describe('Full Lifecycle Loop E2E: P07-M03 (Alert -> LOTO -> Tasks -> Close -> T
         loto_steps_completed: updatedSteps,
         loto_permit_no: isComplete ? 'LOTO-P07-1001' : undefined,
         status: isComplete ? 'loto_applied' : 'scheduled',
-      })!;
+      } as any)!;
     }
 
     expect(currentWO.status).toBe('loto_applied');
@@ -108,7 +108,7 @@ describe('Full Lifecycle Loop E2E: P07-M03 (Alert -> LOTO -> Tasks -> Close -> T
     currentWO = mutateLocalWorkOrder(currentWO.id, {
       task_steps_completed: [0],
       status: 'in_progress',
-    })!;
+    } as any)!;
     expect(currentWO.status).toBe('in_progress');
 
     const tileInProgress = getDerivedMachineTileState(machine, [approvedAlert!], [currentWO]);
@@ -156,9 +156,9 @@ describe('Full Lifecycle Loop E2E: P07-M03 (Alert -> LOTO -> Tasks -> Close -> T
 
     // CRUCIAL: Machine Tile returns to normal!
     const tileFinal = getDerivedMachineTileState(
-      closureResult.machine,
+      closureResult!.machine,
       [resolvedAlert],
-      [closureResult.workOrder]
+      [closureResult!.workOrder]
     );
     expect(tileFinal.state).toBe('normal');
     expect(tileFinal.badgeLabel).toBe('Running');

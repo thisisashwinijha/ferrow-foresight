@@ -166,7 +166,7 @@ export function getWorkflowStage(
       return 5;
     }
 
-    if (alert.status === 'triage_in_progress' || (alert as any).stage === 2) {
+    if ((alert.status as string) === 'triage_in_progress' || (alert as any).stage === 2) {
       return 2;
     }
 

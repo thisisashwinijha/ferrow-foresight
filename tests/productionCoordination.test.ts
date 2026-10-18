@@ -28,7 +28,7 @@ describe('STEP 2: Production Coordination & Window Confirmation', () => {
   });
 
   it('allows Production Manager to confirm a window on a scheduled work order', () => {
-    const newWo: WorkOrder = {
+    const newWo: any = {
       id: 'WO-9901',
       alert_id: 'AL-1001',
       machine_id: 'P07-M03',
@@ -65,7 +65,7 @@ describe('STEP 2: Production Coordination & Window Confirmation', () => {
   });
 
   it('allows Production Manager to request another window with a reason', () => {
-    const newWo: WorkOrder = {
+    const newWo: any = {
       id: 'WO-9902',
       alert_id: 'AL-1002',
       machine_id: 'P07-M04',

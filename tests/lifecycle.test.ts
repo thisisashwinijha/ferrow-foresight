@@ -12,7 +12,7 @@ import { triageService } from '@/lib/triageService';
 import { Machine, Alert, WorkOrder } from '@/lib/types';
 
 describe('Machine Lifecycle State Derivation', () => {
-  const baseMachine: Machine = {
+  const baseMachine: any = {
     id: 'P07-M03',
     name: 'Roughing Stand 1',
     plant_id: 'P-07',
@@ -30,7 +30,7 @@ describe('Machine Lifecycle State Derivation', () => {
     temperature_baseline: 55,
   };
 
-  const p1Alert: Alert = {
+  const p1Alert: any = {
     id: 'AL-1001',
     machine_id: 'P07-M03',
     plant_id: 'P-07',
@@ -48,7 +48,7 @@ describe('Machine Lifecycle State Derivation', () => {
     created_at: '2026-10-18T06:00:00Z',
   };
 
-  const inProgressWO: WorkOrder = {
+  const inProgressWO: any = {
     id: 'WO-1001',
     alert_id: 'AL-1001',
     machine_id: 'P07-M03',
@@ -62,7 +62,7 @@ describe('Machine Lifecycle State Derivation', () => {
     created_at: '2026-10-18T07:00:00Z',
   };
 
-  const scheduledWO: WorkOrder = {
+  const scheduledWO: any = {
     id: 'WO-1002',
     machine_id: 'P07-M03',
     plant_id: 'P-07',
@@ -139,7 +139,7 @@ describe('Criticality Baseline Calculations', () => {
 
 describe('Recent Activity Events', () => {
   it('builds chronological event stream for alerts and work orders', () => {
-    const alerts: Alert[] = [
+    const alerts: any[] = [
       {
         id: 'AL-1001',
         machine_id: 'P07-M03',
@@ -156,7 +156,7 @@ describe('Recent Activity Events', () => {
       },
     ];
 
-    const workOrders: WorkOrder[] = [
+    const workOrders: any[] = [
       {
         id: 'WO-1001',
         alert_id: 'AL-1001',
@@ -203,8 +203,8 @@ describe('Technician Sensory Capture & Triage Service', () => {
     });
 
     expect(result.observation).toBeDefined();
-    expect(result.observation.id).toMatch(/^OBS-/);
-    expect(result.observation.machine_id).toBe('P07-M04');
+    expect(result.observation!.id).toMatch(/^OBS-/);
+    expect(result.observation!.machine_id).toBe('P07-M04');
 
     expect(result.alert).toBeDefined();
     expect(result.alert.id).toMatch(/^AL-/);

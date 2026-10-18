@@ -23,7 +23,19 @@ export interface DerivedMachineTileState {
 export interface ActivityEvent {
   id: string;
   timestamp: string;
-  type: 'alert_raised' | 'alert_approved' | 'alert_rejected' | 'alert_resolved' | 'loto_applied' | 'wo_started' | 'wo_closed';
+  type:
+    | 'alert_raised'
+    | 'alert_approved'
+    | 'alert_rejected'
+    | 'alert_resolved'
+    | 'alert_escalated'
+    | 'spares_confirmed'
+    | 'purchase_request_raised'
+    | 'window_confirmed'
+    | 'window_reschedule'
+    | 'loto_applied'
+    | 'wo_started'
+    | 'wo_closed';
   title: string;
   description: string;
   machineId: string;

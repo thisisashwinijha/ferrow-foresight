@@ -30,7 +30,7 @@ describe('STEP 0: Fix approval on captured alerts', () => {
     });
 
     expect(result.observation).toBeDefined();
-    expect(result.observation.id).toMatch(/^OBS-/);
+    expect(result.observation!.id).toMatch(/^OBS-/);
 
     expect(result.alert).toBeDefined();
     expect(result.alert.id).toMatch(/^AL-/);
@@ -47,7 +47,7 @@ describe('STEP 0: Fix approval on captured alerts', () => {
     // Must cite real evidence ids: observation id and sensor telemetry for sensor machine
     expect(result.alert.evidence.length).toBeGreaterThanOrEqual(2);
     expect(result.alert.evidence[0].id).toBe('E1');
-    expect(result.alert.evidence[0].text).toContain(result.observation.id);
+    expect(result.alert.evidence[0].text).toContain(result.observation!.id);
     expect(result.alert.evidence[1].id).toBe('E2');
     expect(result.alert.evidence[1].type).toBe('sensor');
     expect(result.alert.evidence[1].text).toContain('vibration');
@@ -90,7 +90,7 @@ describe('STEP 0: Fix approval on captured alerts', () => {
     // Legacy machine: cites observation E1
     expect(result.alert.evidence.length).toBe(1);
     expect(result.alert.evidence[0].id).toBe('E1');
-    expect(result.alert.evidence[0].text).toContain(result.observation.id);
+    expect(result.alert.evidence[0].text).toContain(result.observation!.id);
     expect(result.alert.reasoning).toContain('E1');
     expect(result.alert.status).toBe('pending');
   });
@@ -115,7 +115,7 @@ describe('STEP 0: Fix approval on captured alerts', () => {
     expect(approvedAlert?.status).toBe('approved');
 
     // Generate Work Order
-    const wo: WorkOrder = {
+    const wo: any = {
       id: `WO-${alertId.replace('AL-', '')}`,
       alert_id: alertId,
       machine_id: triage.alert.machine_id,
@@ -144,7 +144,7 @@ describe('STEP 0: Fix approval on captured alerts', () => {
     expect(zeroEvidence.failBehavior).toBe('needs_review');
 
     const uncitedEvidence = checkEvidenceIdsExist('Some explanation.', [
-      { id: 'E1', type: 'observation', text: 'Detail' },
+      { id: 'E1', type: 'observation', text: 'Detail' } as any,
     ]);
     expect(uncitedEvidence.pass).toBe(false);
     expect(uncitedEvidence.failBehavior).toBe('needs_review');
