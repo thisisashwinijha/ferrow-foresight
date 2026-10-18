@@ -3,24 +3,10 @@
 import React, { createContext, useContext, useEffect, useState, useTransition, Suspense, useCallback } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 
-export type UserRole =
-  | 'Head of Plant Operations'
-  | 'Plant Head'
-  | 'Maintenance Planner'
-  | 'Technician'
-  | 'Production Manager'
-  | 'Stores In-charge'
-  | 'Training Coordinator';
+import { UserRole, ROLE_LANDING_PAGES, getRoleLandingUrl } from '@/lib/roles';
 
-export const ROLE_LANDING_PAGES: Record<UserRole, string> = {
-  'Head of Plant Operations': '/network',
-  'Plant Head': '/',
-  'Maintenance Planner': '/planning',
-  'Technician': '/capture',
-  'Production Manager': '/production',
-  'Stores In-charge': '/spares',
-  'Training Coordinator': '/people',
-};
+export type { UserRole };
+export { ROLE_LANDING_PAGES };
 
 interface PlantContextType {
   plantId: string;
@@ -93,12 +79,7 @@ export function PlantProvider({ children }: { children: React.ReactNode }) {
 
   const setRole = (newRole: UserRole) => {
     setLocalRole(newRole);
-    const landing = ROLE_LANDING_PAGES[newRole] || '/';
-    const params = new URLSearchParams();
-    if (plantId) params.set('plant', plantId);
-    if (lineId && lineId !== 'all') params.set('line', lineId);
-    const query = params.toString();
-    const dest = query ? `${landing}?${query}` : landing;
+    const dest = getRoleLandingUrl(newRole, plantId, lineId);
     router.push(dest);
   };
 
