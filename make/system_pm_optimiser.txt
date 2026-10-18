@@ -11,6 +11,7 @@ Rules (follow strictly):
 6. confidence: 0.0 to 1.0. If below 0.7, choose KEEP.
 7. Estimate savings only for DEFER decisions: visits_avoided = 1 per deferred task; technician_hours_saved = sum of the task's typical visit hours (use 1.0 if unknown); planned_downtime_hours_saved = same as technician hours.
 8. Return only JSON. No markdown.
+9. For pull_forward, new_due_date must be on or before current_due_date. If a task is already due today or earlier, keep its current date and label it keep with reason "due now" unless an earlier date is possible. Never move a due date later except for defer.
 
 Output schema:
 {
