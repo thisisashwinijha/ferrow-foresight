@@ -65,6 +65,24 @@ export function formatFailureMode(mode?: string | null): string {
 }
 
 /**
+ * Formats an observation symptom tag into a readable chip text.
+ * e.g. "sound:grinding" -> "Sound: grinding"
+ *      "heat:hot_to_touch" -> "Heat: hot to touch"
+ *      "visual:smoke" -> "Visual: smoke"
+ */
+export function formatObservationTag(tag?: string | null): string {
+  if (!tag) return '';
+  const clean = tag.replace(/^#/, '').trim();
+  if (!clean.includes(':')) {
+    return clean.charAt(0).toUpperCase() + clean.slice(1).replace(/_/g, ' ');
+  }
+  const [category, ...rest] = clean.split(':');
+  const catCapitalized = category.charAt(0).toUpperCase() + category.slice(1);
+  const detail = rest.join(':').replace(/_/g, ' ');
+  return `${catCapitalized}: ${detail}`;
+}
+
+/**
  * Shared Lifecycle Derivation function:
  * Derives machine tile state in one authoritative place:
  * open alert (urgency colour) > work order in_progress or loto_applied (wrench, "In progress") > work order scheduled/approved (neutral tile with calendar icon and "WO-id · date, shift") > normal.

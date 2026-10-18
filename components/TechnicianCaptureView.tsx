@@ -11,7 +11,7 @@ import {
   Alert as AlertType,
   Observation,
 } from '@/lib/types';
-import { formatFailureMode } from '@/lib/lifecycle';
+import { formatFailureMode, formatObservationTag } from '@/lib/lifecycle';
 import { usePlantContext } from './PlantContext';
 import { useToast } from './ToastContext';
 import {
@@ -677,9 +677,9 @@ export function TechnicianCaptureView({
                 {selectedSymptoms.map((sym) => (
                   <span
                     key={sym}
-                    className="text-[10px] px-2 py-0.5 rounded-full bg-canvas border border-line text-ink"
+                    className="text-[10px] px-2 py-0.5 rounded-chip bg-surface-2 border border-line text-ink"
                   >
-                    {sym}
+                    {formatObservationTag(sym)}
                   </span>
                 ))}
               </div>

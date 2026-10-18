@@ -18,7 +18,7 @@ import {
 } from '@/lib/types';
 import { useMachineTelemetry } from '@/lib/simulator';
 import { getVibrationSeverity, getTemperatureSeverity } from '@/lib/risk';
-import { formatFailureMode } from '@/lib/lifecycle';
+import { formatFailureMode, formatObservationTag } from '@/lib/lifecycle';
 import {
   Activity,
   AlertTriangle,
@@ -487,9 +487,9 @@ export function MachineHistoryCard({
                       {obs.symptom_tags?.map((tag) => (
                         <span
                           key={tag}
-                          className="px-2 py-0.5 rounded-chip text-[11px] font-medium bg-ink/10 text-ink"
+                          className="px-2 py-0.5 rounded-chip text-[11px] font-medium bg-surface-2 text-ink border border-line/30"
                         >
-                          #{tag}
+                          {formatObservationTag(tag)}
                         </span>
                       ))}
                       <span className="text-[10px] text-ink-muted ml-auto">

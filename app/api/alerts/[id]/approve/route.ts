@@ -9,7 +9,8 @@ import {
   reserveLocalSpares,
 } from '@/lib/data/localStore';
 import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
-import { STANDARD_LOTO_CHECKLIST } from '@/lib/guardrails';
+import { STANDARD_LOTO_CHECKLIST, runAllGuardrails } from '@/lib/guardrails';
+import { getLocalStoreData } from '@/lib/data/localStore';
 import { WorkOrder, Alert } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -93,6 +94,37 @@ export async function POST(
       payload.assigned_technician !== undefined
         ? payload.assigned_technician
         : alert.assigned_technician;
+
+    const store = getLocalStoreData();
+    const techObj = ((store.technicians as any[]) || []).find((t) => t.id === assignedTech);
+    const guardrailOutcome = runAllGuardrails(
+      {
+        ...alert,
+        assigned_technician: assignedTech,
+      },
+      {
+        machineCriticality: machine?.criticality,
+        technicianShift: techObj?.shift || null,
+        technicianCerts: store.certifications || [],
+        liveSpares: store.spares || [],
+        userRole: payload.user_role,
+        referenceDate: '2026-10-18',
+      }
+    );
+
+    if (!guardrailOutcome.pass) {
+      const failingReasons = guardrailOutcome.checks
+        .filter((c) => !c.pass)
+        .map((c) => c.detail)
+        .join('; ');
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Cannot approve alert: guardrail verification failed (${failingReasons})`,
+        },
+        { status: 422 }
+      );
+    }
 
     const scheduledWindow = payload.scheduled_window || alert.proposed_window;
 

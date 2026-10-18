@@ -92,9 +92,10 @@ describe('Guardrail System: Rule 2 - Evidence IDs Exist', () => {
     expect(res.detail).toContain('E3');
   });
 
-  it('passes when no evidence IDs are cited', () => {
+  it('fails when no evidence IDs are cited or evidence list is empty', () => {
     const res = checkEvidenceIdsExist('General observation of motor noise.', []);
-    expect(res.pass).toBe(true);
+    expect(res.pass).toBe(false);
+    expect(res.failBehavior).toBe('needs_review');
   });
 });
 

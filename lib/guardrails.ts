@@ -179,13 +179,23 @@ export function checkEvidenceIdsExist(
   const uniqueCited = Array.from(new Set(citedMatches));
   const availableIds = new Set(evidence.map((e) => e.id));
 
+  // STEP 0 (e): An evidence check with zero evidence ids must fail, not pass.
+  if (evidence.length === 0 || uniqueCited.length === 0) {
+    return {
+      rule: 'evidence_ids_exist',
+      pass: false,
+      detail: 'Evidence check failed: zero evidence IDs cited in reasoning or zero evidence items provided',
+      failBehavior: 'needs_review',
+    };
+  }
+
   const missing = uniqueCited.filter((id) => !availableIds.has(id));
 
   if (missing.length === 0) {
     return {
       rule: 'evidence_ids_exist',
       pass: true,
-      detail: uniqueCited.length > 0 ? `All cited evidence IDs (${uniqueCited.join(', ')}) exist` : 'No evidence IDs cited',
+      detail: `All cited evidence IDs (${uniqueCited.join(', ')}) exist in evidence array`,
     };
   }
 

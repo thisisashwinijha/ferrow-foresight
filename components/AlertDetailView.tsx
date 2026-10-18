@@ -20,7 +20,22 @@ import {
   GuardrailCheckResult,
   STANDARD_LOTO_CHECKLIST,
 } from '@/lib/guardrails';
-import { formatFailureMode } from '@/lib/lifecycle';
+import { formatFailureMode, formatObservationTag } from '@/lib/lifecycle';
+
+const TAXONOMY_FAILURE_MODES = [
+  'bearing_wear',
+  'belt_wear',
+  'misalignment',
+  'lubrication_failure',
+  'motor_overheating',
+  'hydraulic_leak',
+  'seal_failure',
+  'electrical_fault',
+  'pneumatic_leak',
+  'sensor_fault',
+  'unknown',
+  'none',
+] as const;
 import {
   AlertTriangle,
   ArrowLeft,
@@ -74,10 +89,14 @@ export function AlertDetailView({
   const [showRejectModal, setShowRejectModal] = useState<boolean>(false);
   const [rejectReason, setRejectReason] = useState<string>('');
 
-  // Override technician picker state
+  // Correct and re-check state
+  const [selectedFailureModeOverride, setSelectedFailureModeOverride] = useState<string>(
+    alert.failure_mode || 'unknown'
+  );
   const [selectedTechOverride, setSelectedTechOverride] = useState<string>(
     alert.assigned_technician || ''
   );
+  const [isSavingCorrection, setIsSavingCorrection] = useState<boolean>(false);
 
   // Group certifications by technician
   const certsByTech = useMemo(() => {
@@ -90,7 +109,7 @@ export function AlertDetailView({
     return map;
   }, [certifications]);
 
-  // Run dynamic guardrails with live context and selected technician
+  // Run dynamic guardrails with live context, failure mode override and selected technician
   const guardrailOutcome = useMemo(() => {
     const currentTech = selectedTechOverride || alert.assigned_technician;
     const techObj = technicians.find((t) => t.id === currentTech);
@@ -98,6 +117,7 @@ export function AlertDetailView({
     return runAllGuardrails(
       {
         ...alert,
+        failure_mode: selectedFailureModeOverride,
         assigned_technician: currentTech,
       },
       {
@@ -109,14 +129,36 @@ export function AlertDetailView({
         referenceDate: '2026-10-18',
       }
     );
-  }, [alert, selectedTechOverride, machine.criticality, technicians, certifications, liveSpares, role]);
+  }, [alert, selectedFailureModeOverride, selectedTechOverride, machine.criticality, technicians, certifications, liveSpares, role]);
 
   // Check role authorization for Criticality A + P1
   const isCritAP1 = machine.criticality === 'A' && alert.urgency === 'P1';
   const isAuthorizedRole = role === 'Plant Head' || role === 'Head of Plant Operations';
   const requiresPlantHeadApproval = isCritAP1 && !isAuthorizedRole;
 
-  // Qualified technicians list for override picker
+  // Qualified, certified, and shift-matched technicians only (for Correct and re-check)
+  const eligibleTechnicians = useMemo(() => {
+    const requiredCerts = alert.required_certifications || [];
+    const windowShift = alert.proposed_window?.shift;
+
+    return technicians.filter((tech) => {
+      // 1. Shift match
+      if (windowShift && tech.shift.toUpperCase() !== windowShift.toUpperCase()) {
+        return false;
+      }
+      // 2. All required certs must be held and valid (not expired vs 2026-10-18)
+      const techCerts = certsByTech.get(tech.id) || [];
+      const validCerts = techCerts.filter(
+        (c) => new Date(c.valid_until) >= new Date('2026-10-18')
+      );
+      const hasAllRequired = requiredCerts.every((req) =>
+        validCerts.some((c) => c.certification.toLowerCase() === req.toLowerCase())
+      );
+      return hasAllRequired;
+    });
+  }, [technicians, certsByTech, alert.required_certifications, alert.proposed_window]);
+
+  // Qualified technicians list for general override picker
   const qualifiedTechnicians = useMemo(() => {
     const requiredCerts = alert.required_certifications || [];
     return technicians.map((tech) => {
@@ -157,10 +199,57 @@ export function AlertDetailView({
     return map;
   }, [liveSpares]);
 
+  // Handler: Save Correction & Re-check Guardrails
+  const handleSaveCorrection = async () => {
+    setIsSavingCorrection(true);
+    try {
+      const targetTech = selectedTechOverride || null;
+      const willPass = guardrailOutcome.pass;
+      const res = await fetch(`/api/alerts/${alert.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          failure_mode: selectedFailureModeOverride,
+          assigned_technician: targetTech,
+          status: willPass ? 'pending' : 'needs_review',
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setAlert(data.alert);
+        if (willPass) {
+          showToast('Corrections applied & guardrails passed. Alert is now ready for approval.', 'success');
+        } else {
+          const failedDetails = guardrailOutcome.checks
+            .filter((c) => !c.pass)
+            .map((c) => c.rule.replace(/_/g, ' '))
+            .join(', ');
+          showToast(`Corrections saved, but guardrails still failing: ${failedDetails}`, 'warning');
+        }
+        router.refresh();
+      } else {
+        showToast(data.error || 'Failed to update alert', 'alert');
+      }
+    } catch {
+      showToast('Network error while saving correction', 'alert');
+    } finally {
+      setIsSavingCorrection(false);
+    }
+  };
+
   // Handler: Approve Alert
   const handleApprove = async () => {
     if (requiresPlantHeadApproval) {
       showToast('P1 alerts on Criticality A assets require Plant Head approval.', 'warning');
+      return;
+    }
+    if (!guardrailOutcome.pass) {
+      const failedDetails = guardrailOutcome.checks
+        .filter((c) => !c.pass)
+        .map((c) => c.detail)
+        .join('; ');
+      showToast(`Cannot approve alert: guardrails failed (${failedDetails})`, 'alert');
       return;
     }
 
@@ -181,13 +270,13 @@ export function AlertDetailView({
       if (res.ok && data.success) {
         setAlert(data.alert);
         setCreatedWorkOrder(data.workOrder);
-        showToast(`Alert approved. Work order ${data.workOrder.id} scheduled!`, 'info');
+        showToast(`Alert approved. Work order ${data.workOrder.id} scheduled!`, 'success');
         router.refresh();
       } else {
-        showToast(data.error || 'Failed to approve alert', 'warning');
+        showToast(data.error || 'Failed to approve alert', 'alert');
       }
     } catch {
-      showToast('Network error while approving alert', 'warning');
+      showToast('Network error while approving alert', 'alert');
     } finally {
       setIsApproving(false);
     }
@@ -277,6 +366,17 @@ export function AlertDetailView({
                 const isAlertResolved =
                   alert.status === 'resolved' ||
                   (alert.status === 'approved' && createdWorkOrder?.status === 'closed');
+                const isEffectiveNeedsReview =
+                  !guardrailOutcome.pass &&
+                  alert.status !== 'approved' &&
+                  alert.status !== 'resolved' &&
+                  alert.status !== 'rejected';
+                const displayStatus = isAlertResolved
+                  ? 'Resolved'
+                  : isEffectiveNeedsReview
+                  ? 'Needs review'
+                  : alert.status.replace('_', ' ');
+
                 return (
                   <span
                     className={`px-2.5 py-0.5 rounded-chip text-xs font-medium capitalize ${
@@ -286,12 +386,12 @@ export function AlertDetailView({
                         ? 'bg-ok/10 text-ok'
                         : alert.status === 'rejected'
                         ? 'bg-ink/10 text-ink-muted'
-                        : alert.status === 'needs_review'
+                        : isEffectiveNeedsReview || alert.status === 'needs_review'
                         ? 'bg-warning/10 text-warning font-semibold'
                         : 'bg-surface-2 text-ink'
                     }`}
                   >
-                    {isAlertResolved ? 'Resolved' : alert.status.replace('_', ' ')}
+                    {displayStatus}
                   </span>
                 );
               })()}
@@ -330,6 +430,28 @@ export function AlertDetailView({
             </div>
           </div>
         </div>
+
+        {/* Guardrail failure explanation banner */}
+        {!guardrailOutcome.pass && alert.status !== 'approved' && alert.status !== 'resolved' && (
+          <div className="p-4 rounded-btn bg-warning/10 border border-warning/30 text-xs space-y-2">
+            <div className="flex items-center gap-2 text-warning font-semibold">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>Guardrail verification failed — Intervention needs review</span>
+            </div>
+            <p className="text-ink leading-relaxed">
+              This recommendation cannot be approved yet because one or more safety or taxonomy guardrails failed. Planners must use the <strong>Correct and re-check</strong> section below to update the failure mode or assign an eligible technician.
+            </p>
+            <ul className="list-disc pl-5 space-y-1 text-ink-muted">
+              {guardrailOutcome.checks
+                .filter((c) => !c.pass)
+                .map((c) => (
+                  <li key={c.rule}>
+                    <strong className="text-ink capitalize">{c.rule.replace(/_/g, ' ')}:</strong> {c.detail}
+                  </li>
+                ))}
+            </ul>
+          </div>
+        )}
 
         {/* Plant Head Approval Notice if Criticality A & P1 */}
         {requiresPlantHeadApproval && isPending && (
@@ -415,7 +537,7 @@ export function AlertDetailView({
             <div className="space-y-3">
               <div>
                 <span className="text-[11px] font-semibold text-ink-muted block mb-1">
-                  Clinical assessment
+                  Assessment
                 </span>
                 <p className="text-xs text-ink leading-relaxed p-3.5 rounded-btn bg-surface-2/40 border border-line/20">
                   {alert.reasoning}
@@ -448,22 +570,40 @@ export function AlertDetailView({
             </h2>
 
             <div className="space-y-2 pt-1">
-              {alert.evidence?.map((item) => (
-                <div
-                  key={item.id}
-                  className="p-3 rounded-btn bg-surface-2/40 border border-line/20 flex items-start gap-3 text-xs"
-                >
-                  <span className="font-mono font-semibold text-ink px-1.5 py-0.5 rounded-chip bg-surface text-[11px] shrink-0">
-                    {item.id}
-                  </span>
-                  <div className="space-y-0.5 flex-1">
-                    <span className="text-[11px] font-medium text-ink-muted capitalize">
-                      {item.type}
+              {alert.evidence?.map((item) => {
+                const match = item.text.match(/\(Tags:\s*([^)]+)\)/i);
+                const tags = match ? match[1].split(',').map((t) => t.trim()) : [];
+                const cleanText = match ? item.text.replace(/\(Tags:\s*[^)]+\)/i, '').trim() : item.text;
+
+                return (
+                  <div
+                    key={item.id}
+                    className="p-3 rounded-btn bg-surface-2/40 border border-line/20 flex items-start gap-3 text-xs"
+                  >
+                    <span className="font-mono font-semibold text-ink px-1.5 py-0.5 rounded-chip bg-surface text-[11px] shrink-0">
+                      {item.id}
                     </span>
-                    <p className="text-ink leading-relaxed">{item.text}</p>
+                    <div className="space-y-1 flex-1">
+                      <span className="text-[11px] font-medium text-ink-muted capitalize">
+                        {item.type}
+                      </span>
+                      <p className="text-ink leading-relaxed">{cleanText}</p>
+                      {tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {tags.map((t) => (
+                            <span
+                              key={t}
+                              className="px-2 py-0.5 rounded-chip text-[11px] font-medium bg-surface text-ink border border-line/30"
+                            >
+                              {formatObservationTag(t)}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -616,9 +756,9 @@ export function AlertDetailView({
               <div className="space-y-2 pt-2">
                 <button
                   onClick={handleApprove}
-                  disabled={isApproving || requiresPlantHeadApproval}
+                  disabled={isApproving || requiresPlantHeadApproval || !guardrailOutcome.pass}
                   className={`w-full py-2.5 rounded-btn text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
-                    requiresPlantHeadApproval
+                    requiresPlantHeadApproval || !guardrailOutcome.pass
                       ? 'bg-surface-2 text-ink-muted cursor-not-allowed opacity-60'
                       : 'bg-ink text-canvas hover:opacity-90 shadow-xs'
                   }`}
@@ -626,6 +766,28 @@ export function AlertDetailView({
                   <Check className="w-4 h-4" />
                   <span>{isApproving ? 'Approving...' : 'Approve & Schedule Work Order'}</span>
                 </button>
+
+                {/* Show explanation why disabled */}
+                {(!guardrailOutcome.pass || requiresPlantHeadApproval) && (
+                  <div className="p-2.5 rounded-btn bg-surface-2/60 border border-line/30 space-y-1">
+                    {!guardrailOutcome.pass && (
+                      <p className="text-[11px] text-warning flex items-start gap-1.5 font-medium leading-relaxed">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        <span>
+                          Approve is disabled: Guardrail checks failed ({guardrailOutcome.checks.filter(c => !c.pass).map(c => c.rule.replace(/_/g, ' ')).join(', ')}). Use &quot;Correct and re-check&quot; below to fix.
+                        </span>
+                      </p>
+                    )}
+                    {requiresPlantHeadApproval && (
+                      <p className="text-[11px] text-danger flex items-start gap-1.5 font-medium leading-relaxed">
+                        <ShieldAlert className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        <span>
+                          Approve is disabled: Criticality A asset with P1 urgency requires Plant Head approval.
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 <button
                   onClick={() => setShowRejectModal(true)}
@@ -758,27 +920,82 @@ export function AlertDetailView({
               </div>
             )}
 
-            {/* Override Technician Picker (Guardrail Override) */}
+            {/* Correct and re-check for Planners */}
             {isPending && (
-              <div className="pt-2 border-t border-line/20 space-y-2">
-                <label className="text-[11px] font-semibold text-ink-muted block">
-                  Re-assign / override qualified technician
-                </label>
-                <select
-                  value={selectedTechOverride}
-                  onChange={(e) => setSelectedTechOverride(e.target.value)}
-                  className="w-full bg-surface-2/60 border border-line/30 rounded-btn p-2 text-xs text-ink focus:outline-hidden"
+              <div className="pt-3 border-t border-line/20 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-ink flex items-center gap-1.5">
+                    <Wrench className="w-3.5 h-3.5 text-ink-muted" /> Correct and re-check
+                  </span>
+                  <span className="text-[10px] text-ink-muted">Planner override</span>
+                </div>
+
+                {/* Failure Mode Dropdown (Taxonomy only) */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-medium text-ink-muted block">
+                    Failure mode (taxonomy only)
+                  </label>
+                  <select
+                    value={selectedFailureModeOverride}
+                    onChange={(e) => setSelectedFailureModeOverride(e.target.value)}
+                    className="w-full bg-surface-2/60 border border-line/30 rounded-btn p-2 text-xs text-ink focus:outline-hidden"
+                  >
+                    {TAXONOMY_FAILURE_MODES.map((mode) => (
+                      <option key={mode} value={mode}>
+                        {formatFailureMode(mode)} ({mode})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Technician Picker (Qualified, certified, shift-matched only) */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-medium text-ink-muted block">
+                      Technician (qualified, certified, shift-matched only)
+                    </label>
+                    <span className="text-[10px] text-ink-muted">
+                      Shift {alert.proposed_window?.shift || 'A'}
+                    </span>
+                  </div>
+                  {eligibleTechnicians.length > 0 ? (
+                    <select
+                      value={selectedTechOverride}
+                      onChange={(e) => setSelectedTechOverride(e.target.value)}
+                      className="w-full bg-surface-2/60 border border-line/30 rounded-btn p-2 text-xs text-ink focus:outline-hidden"
+                    >
+                      <option value="">Select qualified technician...</option>
+                      {eligibleTechnicians.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name} ({t.id}) — Shift {t.shift} · {t.role}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="p-2 rounded-btn bg-warning/10 border border-warning/30 text-xs text-warning">
+                      No technician on Shift {alert.proposed_window?.shift || 'A'} holds all required valid certifications ({alert.required_certifications?.join(', ')}).
+                    </div>
+                  )}
+                  <span className="text-[10px] text-ink-muted block">
+                    Only technicians who hold all required valid certifications and match the proposed window shift are listed.
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleSaveCorrection}
+                  disabled={isSavingCorrection}
+                  className="w-full py-2 rounded-btn bg-surface-2 hover:bg-surface-2/80 border border-line/40 text-xs font-semibold text-ink transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
                 >
-                  <option value="">Select technician...</option>
-                  {qualifiedTechnicians.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} ({t.id}) — Shift {t.shift} {t.isQualified ? '✓ (Qualified)' : '✗ (Missing certs)'}
-                    </option>
-                  ))}
-                </select>
-                <span className="text-[10px] text-ink-muted block">
-                  Select a certified technician matching the window shift to clear guardrail warnings.
-                </span>
+                  {isSavingCorrection ? (
+                    <span>Saving and verifying guardrails...</span>
+                  ) : (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Save and re-check guardrails</span>
+                    </>
+                  )}
+                </button>
               </div>
             )}
           </div>
