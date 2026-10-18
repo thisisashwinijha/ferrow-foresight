@@ -102,8 +102,8 @@ export async function executeAgent<T = any>(
   const promptVersion =
     options.prompt_version || getDefaultPromptVersion(options.agent);
 
-  // If DEMO_MODE, skipLive requested, or AGENT_PROVIDER is cached, serve cached immediately without live call
-  if (options.skipLive || process.env.AGENT_PROVIDER === 'cached' || options.forceProvider === 'cached') {
+  // If DEMO_MODE, skipLive requested, or AGENT_PROVIDER is cached without forced provider, serve cached immediately without live call
+  if (!options.forceProvider && (options.skipLive || process.env.AGENT_PROVIDER === 'cached')) {
     const cachedResult = await callCachedProvider(
       options,
       'Cached provider enabled'
