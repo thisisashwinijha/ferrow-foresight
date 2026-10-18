@@ -312,3 +312,19 @@ export function mutateLocalPmPlan(
   saveLocalStoreData(store);
   return plans[index];
 }
+
+export function mutateLocalKnowledgeEntry(
+  klId: string,
+  updates: Partial<KnowledgeLibrary>
+): KnowledgeLibrary | null {
+  const store = getLocalStoreData();
+  const klList: KnowledgeLibrary[] = (store.knowledge_library as unknown as KnowledgeLibrary[]) || [];
+  const index = klList.findIndex((k) => k.id === klId);
+  if (index === -1) return null;
+
+  klList[index] = { ...klList[index], ...updates };
+  store.knowledge_library = klList;
+  saveLocalStoreData(store);
+  return klList[index];
+}
+
