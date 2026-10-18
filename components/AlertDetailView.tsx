@@ -270,19 +270,28 @@ export function AlertDetailView({
                 {alert.id} · {alert.failure_mode.replace('_', ' ').toUpperCase()}
               </h1>
 
-              <span
-                className={`px-2.5 py-0.5 rounded-chip text-xs font-medium ${
-                  alert.status === 'approved'
-                    ? 'bg-ok/10 text-ok'
-                    : alert.status === 'rejected'
-                    ? 'bg-ink/10 text-ink-muted'
-                    : alert.status === 'needs_review'
-                    ? 'bg-warning/10 text-warning font-semibold'
-                    : 'bg-surface-2 text-ink'
-                }`}
-              >
-                {alert.status.replace('_', ' ')}
-              </span>
+              {(() => {
+                const isAlertResolved =
+                  alert.status === 'resolved' ||
+                  (alert.status === 'approved' && createdWorkOrder?.status === 'closed');
+                return (
+                  <span
+                    className={`px-2.5 py-0.5 rounded-chip text-xs font-medium ${
+                      isAlertResolved
+                        ? 'bg-ok/15 text-ok font-semibold'
+                        : alert.status === 'approved'
+                        ? 'bg-ok/10 text-ok'
+                        : alert.status === 'rejected'
+                        ? 'bg-ink/10 text-ink-muted'
+                        : alert.status === 'needs_review'
+                        ? 'bg-warning/10 text-warning font-semibold'
+                        : 'bg-surface-2 text-ink'
+                    }`}
+                  >
+                    {isAlertResolved ? 'Resolved' : alert.status.replace('_', ' ')}
+                  </span>
+                );
+              })()}
 
               {/* AI Badge */}
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-chip text-xs font-medium bg-agent/10 text-agent">
@@ -339,17 +348,35 @@ export function AlertDetailView({
 
         {/* Existing Work Order banner if already approved */}
         {createdWorkOrder && (
-          <div className="p-4 rounded-btn bg-ok/10 border border-ok/30 text-xs text-ok flex items-center justify-between">
+          <div className={`p-4 rounded-btn text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+            createdWorkOrder.status === 'closed'
+              ? 'bg-ok/10 border border-ok/30 text-ok'
+              : 'bg-surface-2 border border-line/40 text-ink'
+          }`}>
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-ok shrink-0" />
               <span>
-                Work Order <strong>{createdWorkOrder.id}</strong> has been scheduled for {createdWorkOrder.scheduled_window?.date} (Shift {createdWorkOrder.scheduled_window?.shift}).
-                {createdWorkOrder.loto_permit_no && ` LOTO permit: ${createdWorkOrder.loto_permit_no}.`}
+                {createdWorkOrder.status === 'closed' ? (
+                  <>Work order <strong>{createdWorkOrder.id}</strong> completed & closed. Machine restored to nominal baseline.</>
+                ) : (
+                  <>
+                    Work order <strong>{createdWorkOrder.id}</strong> scheduled for {createdWorkOrder.scheduled_window?.date} (Shift {createdWorkOrder.scheduled_window?.shift}).
+                    {createdWorkOrder.loto_permit_no && ` LOTO permit: ${createdWorkOrder.loto_permit_no}.`}
+                  </>
+                )}
               </span>
             </div>
-            <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded-chip bg-ok/20">
-              {createdWorkOrder.status.toUpperCase()}
-            </span>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="font-mono text-[11px] font-semibold px-2 py-0.5 rounded-chip bg-surface-3 text-ink">
+                {createdWorkOrder.status.replace('_', ' ').toUpperCase()}
+              </span>
+              <Link
+                href={`/work-orders/${createdWorkOrder.id}`}
+                className="font-medium text-xs px-2.5 py-1 rounded-btn bg-ink text-canvas hover:opacity-90 transition-opacity"
+              >
+                View work order →
+              </Link>
+            </div>
           </div>
         )}
 

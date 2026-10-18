@@ -6,6 +6,7 @@ import { getPlantByIdSync } from '@/lib/data/plants';
 import { getLinesSync } from '@/lib/data/lines';
 import { getMachinesSync } from '@/lib/data/machines';
 import { getAlertsSync } from '@/lib/data/alerts';
+import { getWorkOrdersSync } from '@/lib/data/workOrders';
 import { getLatestKpiSnapshotSync, getPreviousKpiSnapshotSync } from '@/lib/data/kpis';
 import { KpiStrip } from './KpiStrip';
 import { LineMimic } from './LineMimic';
@@ -22,6 +23,7 @@ export function ControlRoomView() {
   const lines = useMemo(() => getLinesSync(plantId), [plantId]);
   const machines = useMemo(() => getMachinesSync(plantId, lineId), [plantId, lineId]);
   const alerts = useMemo(() => getAlertsSync(plantId, lineId), [plantId, lineId]);
+  const workOrders = useMemo(() => getWorkOrdersSync(plantId, lineId), [plantId, lineId]);
   const currentKpi = useMemo(() => getLatestKpiSnapshotSync(plantId), [plantId]);
   const previousKpi = useMemo(() => getPreviousKpiSnapshotSync(plantId), [plantId]);
 
@@ -121,6 +123,7 @@ export function ControlRoomView() {
             lines={displayedLines}
             machines={machines}
             alerts={alerts}
+            workOrders={workOrders}
           />
         </div>
 
@@ -128,6 +131,7 @@ export function ControlRoomView() {
         <div className="lg:col-span-4 sticky top-20">
           <LiveAlertFeed
             alerts={alerts}
+            workOrders={workOrders}
             plant={plant}
             onSelectAlert={(a) => setSelectedAlert(a)}
           />

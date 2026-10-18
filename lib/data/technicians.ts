@@ -32,7 +32,7 @@ export function getTechnicianSkillsSync(technicianId?: string): TechnicianSkill[
   return skills;
 }
 
-export async function getTechnicians(plantId: string, lineId?: string): Promise<Technician[]> {
+export async function getTechnicians(plantId: string = 'all', lineId?: string): Promise<Technician[]> {
   return queryWithFallback<Technician[]>(
     async (client) => {
       let query = client.from('technicians').select('*');

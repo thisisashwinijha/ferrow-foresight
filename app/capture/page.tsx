@@ -1,11 +1,26 @@
-import { ComingSoonPage } from '@/components/ComingSoonPage';
+import React from 'react';
+import { getAllMachines } from '@/lib/data/machines';
+import { getPlants } from '@/lib/data/plants';
+import { getLines } from '@/lib/data/lines';
+import { getTechnicians } from '@/lib/data/technicians';
+import { TechnicianCaptureView } from '@/components/TechnicianCaptureView';
 
-export default function TechnicianCapturePage() {
+export const dynamic = 'force-dynamic';
+
+export default async function TechnicianCapturePage() {
+  const [machines, plants, lines, technicians] = await Promise.all([
+    getAllMachines(),
+    getPlants(),
+    getLines(),
+    getTechnicians(),
+  ]);
+
   return (
-    <ComingSoonPage
-      module="Technician Capture (Mobile-First)"
-      route="/capture"
-      description="Pick machine, symptom tags (sound, smell, heat, vibration, visual, performance), voice or typed note, submit"
+    <TechnicianCaptureView
+      initialMachines={machines}
+      plants={plants}
+      lines={lines}
+      technicians={technicians}
     />
   );
 }

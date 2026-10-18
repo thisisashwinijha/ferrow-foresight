@@ -182,7 +182,7 @@ export interface KnowledgeLibrary {
 
 export type AlertUrgency = 'P1' | 'P2' | 'P3' | 'none';
 export type AlertActionType = 'monitor' | 'inspect' | 'repair' | 'replace' | 'escalate';
-export type AlertStatus = 'pending' | 'approved' | 'rejected' | 'needs_review' | 'suppressed';
+export type AlertStatus = 'pending' | 'approved' | 'rejected' | 'needs_review' | 'suppressed' | 'resolved';
 
 export interface AlertEvidence {
   id: string;

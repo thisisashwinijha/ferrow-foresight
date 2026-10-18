@@ -11,7 +11,7 @@ export function getLinesSync(plantId?: string, lineId?: string): Line[] {
   });
 }
 
-export async function getLines(plantId: string, lineId?: string): Promise<Line[]> {
+export async function getLines(plantId: string = 'all', lineId?: string): Promise<Line[]> {
   return queryWithFallback<Line[]>(
     async (client) => {
       let query = client.from('lines').select('*');

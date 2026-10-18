@@ -1,0 +1,47 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { triageService } from '@/lib/triageService';
+
+export const dynamic = 'force-dynamic';
+
+const ObservationPayloadSchema = z.object({
+  machine_id: z.string().min(1, 'Machine selection is required'),
+  plant_id: z.string().default('P-07'),
+  symptom_tags: z.array(z.string()).min(1, 'At least one symptom tag must be selected'),
+  note: z.string().min(2, 'Observation note is required'),
+  technician_id: z.string().default('P07-T01'),
+});
+
+export async function POST(request: NextRequest) {
+  try {
+    let body: any = {};
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ success: false, error: 'Invalid JSON payload' }, { status: 400 });
+    }
+
+    const parseResult = ObservationPayloadSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: parseResult.error.issues.map((i) => i.message).join('; '),
+        },
+        { status: 400 }
+      );
+    }
+
+    const result = await triageService(parseResult.data);
+
+    return NextResponse.json({
+      success: true,
+      observation: result.observation,
+      alert: result.alert,
+      message: `Observation logged. AI triage: ${result.alert.failure_mode} · Urgency ${result.alert.urgency}`,
+    });
+  } catch (err: any) {
+    console.error('Error submitting observation:', err);
+    return NextResponse.json({ success: false, error: err?.message || 'Server error' }, { status: 500 });
+  }
+}

@@ -1,5 +1,6 @@
 import seedData from '@/data/seed_data.json';
-import { Alert, WorkOrder, Spares } from '../types';
+import { Alert, WorkOrder, Spares, Machine, Observation, MaintenanceLog } from '../types';
+import { getBaselineRiskScore, getBaselineHealthScore } from '../lifecycle';
 
 let inMemoryStore: any = null;
 
@@ -100,6 +101,15 @@ export function mutateLocalAlert(
   return alerts[index];
 }
 
+export function addLocalAlert(newAlert: Alert): Alert {
+  const store = getLocalStoreData();
+  const alerts: Alert[] = (store.alerts as unknown as Alert[]) || [];
+  alerts.unshift(newAlert);
+  store.alerts = alerts;
+  saveLocalStoreData(store);
+  return newAlert;
+}
+
 export function addLocalWorkOrder(newWo: WorkOrder): WorkOrder {
   const store = getLocalStoreData();
   const workOrders: WorkOrder[] = (store.work_orders as unknown as WorkOrder[]) || [];
@@ -107,6 +117,21 @@ export function addLocalWorkOrder(newWo: WorkOrder): WorkOrder {
   store.work_orders = workOrders;
   saveLocalStoreData(store);
   return newWo;
+}
+
+export function mutateLocalWorkOrder(
+  woId: string,
+  updates: Partial<WorkOrder>
+): WorkOrder | null {
+  const store = getLocalStoreData();
+  const workOrders: WorkOrder[] = (store.work_orders as unknown as WorkOrder[]) || [];
+  const index = workOrders.findIndex((w) => w.id === woId);
+  if (index === -1) return null;
+
+  workOrders[index] = { ...workOrders[index], ...updates };
+  store.work_orders = workOrders;
+  saveLocalStoreData(store);
+  return workOrders[index];
 }
 
 export function reserveLocalSpares(
@@ -126,4 +151,149 @@ export function reserveLocalSpares(
 
   store.spares = spares;
   saveLocalStoreData(store);
+}
+
+export function addLocalObservation(newObs: Observation): Observation {
+  const store = getLocalStoreData();
+  const observations: Observation[] = (store.observations as unknown as Observation[]) || [];
+  observations.unshift(newObs);
+  store.observations = observations;
+  saveLocalStoreData(store);
+  return newObs;
+}
+
+export function addLocalMaintenanceLog(newLog: MaintenanceLog): MaintenanceLog {
+  const store = getLocalStoreData();
+  const logs: MaintenanceLog[] = (store.maintenance_log as unknown as MaintenanceLog[]) || [];
+  logs.unshift(newLog);
+  store.maintenance_log = logs;
+  saveLocalStoreData(store);
+  return newLog;
+}
+
+export function closeLocalWorkOrder(
+  woIdOrPayload:
+    | string
+    | {
+        work_order_id: string;
+        machine_id?: string;
+        plant_id?: string;
+        alert_id?: string;
+        root_cause: string;
+        closure_notes: string;
+        actual_downtime_hours?: number;
+        downtime_hours?: number;
+        parts_used?: Array<{ part_id?: string; spare_id?: string; qty?: number; quantity?: number }>;
+        closed_by?: string;
+      },
+  closureArg?: {
+    root_cause: string;
+    closure_notes: string;
+    downtime_hours?: number;
+    actual_downtime_hours?: number;
+    parts_used?: Array<{ part_id?: string; spare_id?: string; qty?: number; quantity?: number }>;
+  }
+): {
+  success: boolean;
+  workOrder: WorkOrder;
+  machine: Machine;
+  log: MaintenanceLog;
+} | null {
+  const woId = typeof woIdOrPayload === 'string' ? woIdOrPayload : woIdOrPayload.work_order_id;
+  const closure =
+    typeof woIdOrPayload === 'string'
+      ? {
+          root_cause: closureArg?.root_cause || '',
+          closure_notes: closureArg?.closure_notes || '',
+          downtime_hours: closureArg?.actual_downtime_hours ?? closureArg?.downtime_hours ?? 1,
+          parts_used: closureArg?.parts_used,
+        }
+      : {
+          root_cause: woIdOrPayload.root_cause || '',
+          closure_notes: woIdOrPayload.closure_notes || '',
+          downtime_hours: woIdOrPayload.actual_downtime_hours ?? woIdOrPayload.downtime_hours ?? 1,
+          parts_used: woIdOrPayload.parts_used,
+        };
+
+  const store = getLocalStoreData();
+  const workOrders: WorkOrder[] = (store.work_orders as unknown as WorkOrder[]) || [];
+  const woIndex = workOrders.findIndex((w) => w.id === woId);
+  if (woIndex === -1) return null;
+
+  const wo = workOrders[woIndex];
+  const now = new Date().toISOString();
+
+  // 1. Update Work Order
+  wo.status = 'closed';
+  wo.closed_at = now;
+  wo.root_cause = closure.root_cause;
+  wo.closure_notes = closure.closure_notes;
+  wo.downtime_hours = closure.downtime_hours;
+  workOrders[woIndex] = wo;
+  store.work_orders = workOrders;
+
+  // 2. Resolve related alert
+  const alerts: Alert[] = (store.alerts as unknown as Alert[]) || [];
+  const alertIndex = alerts.findIndex((a) => a.id === wo.alert_id);
+  let alertFailureMode = 'Component failure';
+  if (alertIndex !== -1) {
+    alerts[alertIndex].status = 'resolved'; // Resolved alert
+    alertFailureMode = alerts[alertIndex].failure_mode || alertFailureMode;
+    store.alerts = alerts;
+  }
+
+  // 3. Deduct stock and reserved spares used
+  const spares: Spares[] = (store.spares as unknown as Spares[]) || [];
+  const partsToDeduct = closure.parts_used || wo.spares_reserved || [];
+  for (const p of partsToDeduct) {
+    const qty = (p as any).qty || (p as any).quantity || 1;
+    const partId = (p as any).part_id || (p as any).spare_id || (p as any).id;
+    const match = spares.find((s) => s.id === partId);
+    if (match) {
+      match.stock = Math.max(0, match.stock - qty);
+      match.reserved = Math.max(0, (match.reserved || 0) - qty);
+    }
+  }
+  store.spares = spares;
+
+  // 4. Restore Machine status and reset risk score to baseline
+  const machines: Machine[] = (store.machines as unknown as Machine[]) || [];
+  const machIndex = machines.findIndex((m) => m.id === wo.machine_id);
+  let updatedMachine: Machine | null = null;
+  if (machIndex !== -1) {
+    const m = machines[machIndex];
+    m.status = 'running';
+    m.risk_score = getBaselineRiskScore(m.criticality);
+    m.health_score = getBaselineHealthScore(m.criticality);
+    machines[machIndex] = m;
+    store.machines = machines;
+    updatedMachine = m;
+  }
+
+  // 5. Add Maintenance Log entry
+  const logs: MaintenanceLog[] = (store.maintenance_log as unknown as MaintenanceLog[]) || [];
+  const newLog: MaintenanceLog = {
+    id: `ML-${Date.now().toString().slice(-6)}`,
+    machine_id: wo.machine_id,
+    date: now.slice(0, 10),
+    type: 'CBM',
+    finding: 'fault_found',
+    failure_mode: alertFailureMode,
+    downtime_hours: closure.downtime_hours,
+    unplanned: false,
+    technician_id: wo.assigned_technician || 'P07-T01',
+    notes: closure.closure_notes,
+    cost_usd: Math.round(closure.downtime_hours * 250 + 400),
+  };
+  logs.unshift(newLog);
+  store.maintenance_log = logs;
+
+  saveLocalStoreData(store);
+
+  return {
+    success: true,
+    workOrder: wo,
+    machine: updatedMachine as Machine,
+    log: newLog,
+  };
 }

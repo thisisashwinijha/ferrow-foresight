@@ -7,18 +7,28 @@ import {
   Wrench,
   AlertTriangle,
   WifiOff,
+  Calendar,
 } from 'lucide-react';
-import { Machine, Alert } from '@/lib/types';
+import { Machine, Alert, WorkOrder } from '@/lib/types';
 import { useMachineTelemetry } from '@/lib/simulator';
 import { usePlantContext } from './PlantContext';
+import { getDerivedMachineTileState, DerivedMachineTileState } from '@/lib/lifecycle';
 
 interface MachineTileProps {
   machine: Machine;
   activeAlert?: Alert;
+  alerts?: Alert[];
+  workOrders?: WorkOrder[];
   sequenceIndex?: number;
 }
 
-export function MachineTile({ machine, activeAlert, sequenceIndex }: MachineTileProps) {
+export function MachineTile({
+  machine,
+  activeAlert,
+  alerts = [],
+  workOrders = [],
+  sequenceIndex,
+}: MachineTileProps) {
   const router = useRouter();
   const { plantId, lineId } = usePlantContext();
 
@@ -38,25 +48,13 @@ export function MachineTile({ machine, activeAlert, sequenceIndex }: MachineTile
     router.push(`/machines/${machine.id}?plant=${plantId}&line=${lineId}`);
   };
 
-  const hasUrgentAlert =
-    activeAlert &&
-    (activeAlert.status === 'pending' || activeAlert.status === 'needs_review') &&
-    activeAlert.urgency !== 'none';
+  // Derive authoritative lifecycle state
+  const effectiveAlerts = alerts.length > 0 ? alerts : activeAlert ? [activeAlert] : [];
+  const derivedState: DerivedMachineTileState = React.useMemo(() => {
+    return getDerivedMachineTileState(machine, effectiveAlerts, workOrders);
+  }, [machine, effectiveAlerts, workOrders]);
 
-  const isDegrading =
-    machine.id === 'P07-M03' ||
-    machine.id === 'P03-M10' ||
-    machine.id === 'P12-M05' ||
-    machine.id === 'P21-M09';
-
-  const isOffline = machine.id === 'P07-M18' || machine.status === 'offline';
-  const isMaintenance = machine.status === 'maintenance';
-
-  const urgency = activeAlert?.urgency || (isDegrading ? 'P1' : null);
-  const isP1 = urgency === 'P1';
-  const isP2 = urgency === 'P2';
-  const isP3 = urgency === 'P3';
-  const isAbnormal = isP1 || isP2 || isP3 || isMaintenance || isOffline;
+  const isOffline = machine.status === 'offline' || machine.id === 'P07-M18';
 
   // Sparkline calculation for sensor machines
   const points = telemetry?.sparkline || [];
@@ -77,27 +75,28 @@ export function MachineTile({ machine, activeAlert, sequenceIndex }: MachineTile
           .join(' ')
       : '';
 
-  // CALM, LIGHT SURFACES:
-  // Normal machines: soft borderless or ultra-subtle tint. No bright outlines.
-  // Abnormal machines: soft alert tint so they naturally draw the eye.
-  let cardStyle =
-    'bg-surface/50 hover:bg-surface border border-line/20 hover:border-line/40 text-ink';
+  // Card surfaces following the design system & lifecycle rules:
+  // - Open alert: urgency color (P1 solid count, P2/P3 soft tint)
+  // - In progress / LOTO: neutral surface tint with wrench (NEVER alarm colours!)
+  // - Scheduled: neutral tile with calendar icon
+  // - Normal: quiet, borderless or ultra-subtle tint
+  let cardStyle = 'bg-surface/50 hover:bg-surface border border-line/20 hover:border-line/40 text-ink';
 
-  if (isP1) {
-    cardStyle =
-      'bg-critical/10 border border-critical/40 hover:bg-critical/15 hover:border-critical/60 shadow-xs';
-  } else if (isP2) {
-    cardStyle =
-      'bg-high/10 border border-high/40 hover:bg-high/15 hover:border-high/60 shadow-xs';
-  } else if (isP3) {
-    cardStyle =
-      'bg-medium/10 border border-medium/40 hover:bg-medium/15 hover:border-medium/60 shadow-xs';
-  } else if (isMaintenance) {
-    cardStyle =
-      'bg-medium/5 border border-medium/30 hover:bg-medium/10 text-medium';
-  } else if (isOffline) {
-    cardStyle =
-      'bg-surface-2/30 border border-dashed border-line/40 opacity-70';
+  if (isOffline) {
+    cardStyle = 'bg-surface-2/30 border border-dashed border-line/40 opacity-70';
+  } else if (derivedState.state === 'alert') {
+    if (derivedState.urgency === 'P1') {
+      cardStyle = 'bg-critical/10 border border-critical/40 hover:bg-critical/15 hover:border-critical/60 shadow-xs';
+    } else if (derivedState.urgency === 'P2') {
+      cardStyle = 'bg-high/10 border border-high/40 hover:bg-high/15 hover:border-high/60 shadow-xs';
+    } else {
+      cardStyle = 'bg-medium/10 border border-medium/40 hover:bg-medium/15 hover:border-medium/60 shadow-xs';
+    }
+  } else if (derivedState.state === 'in_progress') {
+    // Under maintenance NEVER uses alarm colours: neutral surface tint
+    cardStyle = 'bg-surface-2 border border-line/60 hover:border-line text-ink';
+  } else if (derivedState.state === 'scheduled') {
+    cardStyle = 'bg-surface-2/50 border border-line/30 hover:border-line/50 text-ink-muted';
   }
 
   const currentVib = mounted
@@ -109,7 +108,7 @@ export function MachineTile({ machine, activeAlert, sequenceIndex }: MachineTile
       onClick={handleClick}
       className={`group relative p-2.5 rounded-card ${cardStyle} cursor-pointer transition-all duration-150 hover:scale-[1.01] flex flex-col justify-between h-[86px] select-none`}
     >
-      {/* 1. Header: Step & ID + Quiet Asset Type or Urgency */}
+      {/* 1. Header: Step & ID + Quiet Asset Type or State Badge */}
       <div className="flex items-center justify-between text-[11px] leading-none">
         <div className="flex items-center gap-1.5 min-w-0">
           {sequenceIndex !== undefined && (
@@ -122,36 +121,41 @@ export function MachineTile({ machine, activeAlert, sequenceIndex }: MachineTile
           </span>
         </div>
 
-        {/* Quiet, borderless badges - only abnormal states shout */}
+        {/* State Badges */}
         {isOffline ? (
           <span className="inline-flex items-center gap-1 text-[10px] text-ink-muted font-medium">
             <WifiOff className="w-2.5 h-2.5" />
             <span>Offline</span>
           </span>
-        ) : isMaintenance ? (
-          <span className="inline-flex items-center gap-1 text-[10px] text-medium font-semibold">
-            <Wrench className="w-2.5 h-2.5 animate-pulse" />
-            <span>Maint</span>
-          </span>
-        ) : urgency ? (
+        ) : derivedState.state === 'alert' ? (
           <span
             className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
-              isP1
+              derivedState.urgency === 'P1'
                 ? 'bg-critical/20 text-critical'
-                : isP2
+                : derivedState.urgency === 'P2'
                 ? 'bg-high/20 text-high'
                 : 'bg-medium/20 text-medium'
             }`}
           >
             <AlertTriangle className="w-2.5 h-2.5" />
-            <span>{urgency}</span>
+            <span>{derivedState.urgency}</span>
+          </span>
+        ) : derivedState.state === 'in_progress' ? (
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-ink/10 text-ink">
+            <Wrench className="w-2.5 h-2.5" />
+            <span>{derivedState.badgeLabel}</span>
+          </span>
+        ) : derivedState.state === 'scheduled' ? (
+          <span className="inline-flex items-center gap-1 text-[10px] text-ink-muted font-medium">
+            <Calendar className="w-2.5 h-2.5" />
+            <span>Scheduled</span>
           </span>
         ) : machine.has_sensors ? (
           <span
-            className="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-medium"
+            className="inline-flex items-center gap-1 text-[10px] text-emerald-500 font-medium"
             title="IoT Continuous Telemetry"
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             <span>IoT</span>
           </span>
         ) : (
@@ -165,19 +169,29 @@ export function MachineTile({ machine, activeAlert, sequenceIndex }: MachineTile
         )}
       </div>
 
-      {/* 2. Machine Name & Plain-English issue if abnormal */}
+      {/* 2. Machine Name & Plain-English issue if abnormal or under maintenance */}
       <div className="my-auto py-0.5">
         <p
           className={`text-xs font-medium truncate leading-tight ${
-            isAbnormal ? 'text-ink font-semibold' : 'text-ink'
+            derivedState.isAbnormal ? 'text-ink font-semibold' : 'text-ink'
           }`}
           title={machine.name}
         >
           {machine.name}
         </p>
-        {activeAlert?.failure_mode && (
+        {derivedState.state === 'alert' && derivedState.detailLabel && (
           <p className="text-[10px] text-critical truncate mt-0.5 font-medium capitalize">
-            {activeAlert.failure_mode.replace(/_/g, ' ')}
+            {derivedState.detailLabel.replace(/_/g, ' ')}
+          </p>
+        )}
+        {derivedState.state === 'in_progress' && (
+          <p className="text-[10px] text-ink-muted truncate mt-0.5 font-mono">
+            {derivedState.detailLabel}
+          </p>
+        )}
+        {derivedState.state === 'scheduled' && (
+          <p className="text-[10px] text-ink-muted truncate mt-0.5 font-mono">
+            {derivedState.detailLabel}
           </p>
         )}
       </div>
@@ -192,9 +206,9 @@ export function MachineTile({ machine, activeAlert, sequenceIndex }: MachineTile
               <div className="flex items-baseline gap-1 font-mono">
                 <span
                   className={`text-xs ${
-                    isP1
+                    derivedState.state === 'alert' && derivedState.urgency === 'P1'
                       ? 'text-critical font-bold'
-                      : isP2
+                      : derivedState.state === 'alert' && derivedState.urgency === 'P2'
                       ? 'text-high font-bold'
                       : 'text-ink font-medium'
                   }`}
@@ -209,9 +223,9 @@ export function MachineTile({ machine, activeAlert, sequenceIndex }: MachineTile
                   width={width}
                   height={height}
                   className={
-                    isP1
+                    derivedState.state === 'alert' && derivedState.urgency === 'P1'
                       ? 'text-critical stroke-critical'
-                      : isP2
+                      : derivedState.state === 'alert' && derivedState.urgency === 'P2'
                       ? 'text-high stroke-high'
                       : 'text-ink-muted/30 stroke-current'
                   }
