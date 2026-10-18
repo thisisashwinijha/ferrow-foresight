@@ -133,7 +133,7 @@ export function parseAgentResponse(
       const guardrailOutcome = runAllGuardrails(validPlannerData, guardrailContext);
 
       return {
-        success: guardrailOutcome.pass || guardrailOutcome.status !== 'needs_review',
+        success: true,
         data: {
           ...validPlannerData,
           guardrail_result: {

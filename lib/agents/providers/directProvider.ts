@@ -3,7 +3,7 @@ import { getSystemPrompt } from '../systemPrompts';
 import { ProviderCallResult } from './makeProvider';
 
 export function getPrimaryModel(): string {
-  return process.env.GEMINI_MODEL || 'gemini-flash-latest';
+  return process.env.GEMINI_MODEL || 'gemini-flash-lite-latest';
 }
 
 export function getFallbackModel(): string {
@@ -31,29 +31,44 @@ async function callGeminiRest(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
+  const bodyPayload = {
+    systemInstruction: {
+      parts: [{ text: systemInstructionText }],
+    },
+    contents: [
+      {
+        role: 'user',
+        parts: [{ text: userContentJson }],
+      },
+    ],
+    generationConfig: {
+      temperature: 0,
+      responseMimeType: 'application/json',
+    },
+  };
+
   try {
-    const res = await fetch(url, {
+    let res = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        systemInstruction: {
-          parts: [{ text: systemInstructionText }],
-        },
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: userContentJson }],
-          },
-        ],
-        generationConfig: {
-          temperature: 0,
-          responseMimeType: 'application/json',
-        },
-      }),
+      body: JSON.stringify(bodyPayload),
       signal: controller.signal,
     });
+
+    // Auto-retry on 429 rate limit
+    if (res.status === 429) {
+      console.warn(`[Gemini API] 429 limit hit on ${model}, waiting 7s before retry...`);
+      await new Promise((r) => setTimeout(r, 7000));
+      res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(bodyPayload),
+      });
+    }
 
     clearTimeout(timeoutId);
 

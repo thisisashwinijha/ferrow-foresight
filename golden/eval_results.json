@@ -1,0 +1,107 @@
+{
+  "Alert precision": "100.0%",
+  "Alert recall": "100.0%",
+  "False alarm rate on trap cases": "0.0%",
+  "Failure-mode accuracy (alert cases)": "83.1%",
+  "Urgency exact match": "80.3%",
+  "LOTO correctness": "81.7%",
+  "Uncertified assignment": "0 cases",
+  "Insufficient-evidence detection": "100.0%",
+  "Valid JSON": "100.0%",
+  "p95 latency per case": "9.70 s",
+  "summary": {
+    "total_cases": 82,
+    "provider": "direct",
+    "evaluated_at": "2026-10-18T15:04:09.545Z",
+    "alert_precision": 1,
+    "alert_recall": 1,
+    "trap_false_alarm_rate": 0,
+    "failure_mode_accuracy": 0.8309859154929577,
+    "urgency_match_accuracy": 0.8028169014084507,
+    "loto_correctness": 0.8170731707317073,
+    "uncertified_violations": 0,
+    "insufficient_evidence_detection": 1,
+    "valid_json_rate": 1,
+    "p95_latency_sec": 9.7,
+    "avg_latency_sec": 3.81
+  },
+  "categories": {
+    "sensor_true_positive": {
+      "cases": 14,
+      "alert_match_pct": "100.0%",
+      "failure_mode_pct": "50.0%",
+      "urgency_pct": "85.7%",
+      "loto_correct_pct": "100.0%"
+    },
+    "legacy_observation": {
+      "cases": 15,
+      "alert_match_pct": "100.0%",
+      "failure_mode_pct": "100.0%",
+      "urgency_pct": "73.3%",
+      "loto_correct_pct": "73.3%"
+    },
+    "false_alarm_trap": {
+      "cases": 11,
+      "alert_match_pct": "100.0%",
+      "failure_mode_pct": "N/A",
+      "urgency_pct": "N/A",
+      "loto_correct_pct": "100.0%"
+    },
+    "loto_required": {
+      "cases": 6,
+      "alert_match_pct": "100.0%",
+      "failure_mode_pct": "100.0%",
+      "urgency_pct": "83.3%",
+      "loto_correct_pct": "83.3%"
+    },
+    "no_certified_technician": {
+      "cases": 6,
+      "alert_match_pct": "100.0%",
+      "failure_mode_pct": "83.3%",
+      "urgency_pct": "83.3%",
+      "loto_correct_pct": "66.7%"
+    },
+    "conflicting_signals": {
+      "cases": 5,
+      "alert_match_pct": "100.0%",
+      "failure_mode_pct": "80.0%",
+      "urgency_pct": "20.0%",
+      "loto_correct_pct": "0.0%"
+    },
+    "sensor_dropout": {
+      "cases": 4,
+      "alert_match_pct": "100.0%",
+      "failure_mode_pct": "100.0%",
+      "urgency_pct": "100.0%",
+      "loto_correct_pct": "100.0%"
+    },
+    "vague_observation": {
+      "cases": 5,
+      "alert_match_pct": "100.0%",
+      "failure_mode_pct": "100.0%",
+      "urgency_pct": "100.0%",
+      "loto_correct_pct": "100.0%"
+    },
+    "hinglish_observation": {
+      "cases": 5,
+      "alert_match_pct": "100.0%",
+      "failure_mode_pct": "100.0%",
+      "urgency_pct": "60.0%",
+      "loto_correct_pct": "60.0%"
+    },
+    "spares_stockout": {
+      "cases": 6,
+      "alert_match_pct": "100.0%",
+      "failure_mode_pct": "83.3%",
+      "urgency_pct": "100.0%",
+      "loto_correct_pct": "83.3%"
+    },
+    "production_window_conflict": {
+      "cases": 5,
+      "alert_match_pct": "100.0%",
+      "failure_mode_pct": "60.0%",
+      "urgency_pct": "100.0%",
+      "loto_correct_pct": "100.0%"
+    }
+  }
+}

@@ -60,7 +60,9 @@ export function getProviderSequence(forcedProvider?: AgentProviderName): AgentPr
 
   if (envProvider) {
     if (envProvider === 'cached') return ['cached'];
-    return [envProvider, 'cached'];
+    if (envProvider === 'direct') return ['direct', 'direct_fallback', 'cached'];
+    if (envProvider === 'remote') return ['remote', 'cached'];
+    return [envProvider, 'direct', 'direct_fallback', 'cached'];
   }
 
   const sequence: AgentProviderName[] = [];
@@ -167,26 +169,34 @@ export async function executeAgent<T = any>(
   }
 
   // 2. Abuse protection checks (per-IP limit & global daily cap)
-  const ipCheck = checkIpLimit(options.clientIp);
-  if (!ipCheck.allowed) {
-    const cachedResult = await callCachedProvider(
-      options,
-      'Hourly rate limit reached (10 calls/hour)'
-    );
-    return cachedResult as AgentExecutionResult<T>;
-  }
+  const isEval =
+    (options as any).bypassRateLimit ||
+    options.trigger === 'golden_eval' ||
+    options.trigger === 'eval';
 
-  const dailyStats = getTodayLiveCallStats();
-  if (dailyStats.isCapped) {
-    const cachedResult = await callCachedProvider(
-      options,
-      `Daily limit reached (${dailyStats.dailyCap} calls/day)`
-    );
-    return cachedResult as AgentExecutionResult<T>;
+  if (!isEval) {
+    const ipCheck = checkIpLimit(options.clientIp);
+    if (!ipCheck.allowed) {
+      const cachedResult = await callCachedProvider(
+        options,
+        'Hourly rate limit reached (10 calls/hour)'
+      );
+      return cachedResult as AgentExecutionResult<T>;
+    }
+
+    const dailyStats = getTodayLiveCallStats();
+    if (dailyStats.isCapped) {
+      const cachedResult = await callCachedProvider(
+        options,
+        `Daily limit reached (${dailyStats.dailyCap} calls/day)`
+      );
+      return cachedResult as AgentExecutionResult<T>;
+    }
   }
 
   // 3. Fallback chain
-  const providerSequence = getProviderSequence(options.forceProvider);
+  const effectiveProvider = options.forceProvider || (options as any).forcedProvider;
+  const providerSequence = getProviderSequence(effectiveProvider);
   const attemptedProviders: AgentProviderName[] = [];
 
   for (let i = 0; i < providerSequence.length; i++) {
