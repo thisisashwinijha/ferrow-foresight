@@ -1,0 +1,136 @@
+name: CI
+
+on:
+  push:
+    branches: [ dev, main ]
+  pull_request:
+    branches: [ dev, main ]
+
+jobs:
+  quality:
+    name: Typecheck, Lint, Test & Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit & Integration tests
+        run: npm test
+        env:
+          AGENT_PROVIDER: cached
+
+      - name: Build production app
+        run: npm run build
+        env:
+          AGENT_PROVIDER: cached
+
+  e2e:
+    name: Cross-Browser E2E (Chromium, Firefox, WebKit)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers & dependencies
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Build Next.js application
+        run: npm run build
+        env:
+          AGENT_PROVIDER: cached
+
+      - name: Start Next.js production server
+        run: |
+          npm run start -- -p 3000 &
+          for i in {1..40}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 || echo "000")
+            if [ "$STATUS" = "200" ] || [ "$STATUS" = "307" ]; then
+              echo "Server ready on port 3000"
+              break
+            fi
+            sleep 0.5
+          done
+
+      - name: Run E2E & Accessibility Tests
+        run: npm run test:e2e
+        env:
+          BASE_URL: http://localhost:3000
+          AGENT_PROVIDER: cached
+          BROWSERS: chromium,firefox,webkit
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+  launcher-macos:
+    name: Smoke Test Launcher (macOS)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Mac Launcher in non-interactive mode
+        run: |
+          chmod +x "./Start Ferrow (Mac).command"
+          FERROW_NON_INTERACTIVE=true "./Start Ferrow (Mac).command"
+
+  launcher-windows:
+    name: Smoke Test Launcher (Windows)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Windows Launcher in non-interactive mode
+        shell: cmd
+        run: |
+          set FERROW_NON_INTERACTIVE=true
+          call "Start Ferrow (Windows).bat"

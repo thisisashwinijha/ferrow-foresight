@@ -1,4 +1,6 @@
-import { chromium } from '@playwright/test';
+import { chromium, firefox, webkit, BrowserType } from '@playwright/test';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 
@@ -6,6 +8,12 @@ const VIEWPORTS = [
   { name: 'desktop (1440px)', width: 1440, height: 900 },
   { name: 'mobile (375px)', width: 375, height: 667 },
 ];
+
+const BROWSER_MAP: Record<string, BrowserType> = {
+  chromium,
+  firefox,
+  webkit,
+};
 
 async function resetDemo() {
   const res = await fetch(`${BASE_URL}/api/demo/reset`, { method: 'POST' });
@@ -46,7 +54,6 @@ async function runScenario3(page: any, vpName: string) {
 
   // Filter by suppressed / check suppressed alerts
   const text = await page.innerText('body');
-  // At least check the alert table rendered
   if (!text.includes('Alerts')) {
     throw new Error('S3: Expected alerts page');
   }
@@ -122,52 +129,105 @@ async function main() {
   console.log('=== Ferrow Foresight E2E Demo Scenarios (S1 - S8) ===');
   process.env.AGENT_PROVIDER = 'cached';
 
-  const browser = await chromium.launch({ headless: true });
-  let passed = 0;
-  let failed = 0;
+  const requestedBrowsers = process.env.BROWSERS
+    ? process.env.BROWSERS.split(',').map((s) => s.trim().toLowerCase()).filter((k) => BROWSER_MAP[k])
+    : ['chromium', 'firefox', 'webkit'];
 
-  for (const vp of VIEWPORTS) {
-    console.log(`\nTesting view: ${vp.name} (${vp.width}x${vp.height})`);
-    const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height } });
-    const page = await context.newPage();
-    page.setDefaultNavigationTimeout(60000);
-    page.setDefaultTimeout(60000);
+  console.log(`Browsers to test: ${requestedBrowsers.join(', ')}`);
 
-    const scenarios = [
-      { id: 'S1', fn: runScenario1 },
-      { id: 'S2', fn: runScenario2 },
-      { id: 'S3', fn: runScenario3 },
-      { id: 'S4', fn: runScenario4 },
-      { id: 'S5', fn: runScenario5 },
-      { id: 'S6', fn: runScenario6 },
-      { id: 'S7', fn: runScenario7 },
-      { id: 'S8', fn: runScenario8 },
-    ];
+  const reportDir = path.join(process.cwd(), 'playwright-report');
+  let totalPassed = 0;
+  let totalFailed = 0;
+  const failureLog: Array<{ browser: string; viewport: string; scenario: string; error: string }> = [];
 
-    for (const s of scenarios) {
-      try {
-        await resetDemo();
-        await s.fn(page, vp.name);
-        console.log(`    ✅ ${s.id} passed at ${vp.name}`);
-        passed++;
-      } catch (err: any) {
-        console.error(`    ❌ ${s.id} FAILED at ${vp.name}:`, err.message);
-        failed++;
-      }
+  for (const browserKey of requestedBrowsers) {
+    const browserType = BROWSER_MAP[browserKey];
+    console.log(`\n========================================`);
+    console.log(`Launching Browser: ${browserKey.toUpperCase()}`);
+    console.log(`========================================`);
+
+    let browser;
+    try {
+      browser = await browserType.launch({ headless: true });
+    } catch (launchErr: any) {
+      console.error(`Failed to launch browser ${browserKey}:`, launchErr.message);
+      totalFailed += 16;
+      continue;
     }
 
-    await page.close();
-    await context.close();
+    for (const vp of VIEWPORTS) {
+      console.log(`\nTesting view: [${browserKey}] ${vp.name} (${vp.width}x${vp.height})`);
+      const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height } });
+      const page = await context.newPage();
+      page.setDefaultNavigationTimeout(60000);
+      page.setDefaultTimeout(60000);
+
+      const scenarios = [
+        { id: 'S1', fn: runScenario1 },
+        { id: 'S2', fn: runScenario2 },
+        { id: 'S3', fn: runScenario3 },
+        { id: 'S4', fn: runScenario4 },
+        { id: 'S5', fn: runScenario5 },
+        { id: 'S6', fn: runScenario6 },
+        { id: 'S7', fn: runScenario7 },
+        { id: 'S8', fn: runScenario8 },
+      ];
+
+      for (const s of scenarios) {
+        try {
+          await resetDemo();
+          await s.fn(page, vp.name);
+          console.log(`    ✅ [${browserKey}] ${s.id} passed at ${vp.name}`);
+          totalPassed++;
+        } catch (err: any) {
+          console.error(`    ❌ [${browserKey}] ${s.id} FAILED at ${vp.name}:`, err.message);
+          totalFailed++;
+          failureLog.push({
+            browser: browserKey,
+            viewport: vp.name,
+            scenario: s.id,
+            error: err.message,
+          });
+
+          // Capture failure screenshot for CI report artifact
+          try {
+            if (!fs.existsSync(reportDir)) {
+              fs.mkdirSync(reportDir, { recursive: true });
+            }
+            const cleanVp = vp.name.replace(/[^a-z0-9]/gi, '_');
+            const file = path.join(reportDir, `fail-${browserKey}-${cleanVp}-${s.id}.png`);
+            await page.screenshot({ path: file, fullPage: true });
+          } catch {
+            // ignore screenshot capture errors
+          }
+        }
+      }
+
+      await page.close();
+      await context.close();
+    }
+
+    await browser.close();
   }
 
-  await browser.close();
+  // Save summary to report directory
+  if (failureLog.length > 0) {
+    if (!fs.existsSync(reportDir)) {
+      fs.mkdirSync(reportDir, { recursive: true });
+    }
+    fs.writeFileSync(
+      path.join(reportDir, 'report.json'),
+      JSON.stringify({ passed: totalPassed, failed: totalFailed, failures: failureLog }, null, 2)
+    );
+  }
 
   console.log(`\n========================================`);
-  console.log(`E2E Scenarios Summary: ${passed} passed, ${failed} failed`);
-  if (failed > 0) {
+  console.log(`Multi-Browser E2E Summary: ${totalPassed} passed, ${totalFailed} failed`);
+  if (totalFailed > 0) {
+    console.error(`Failures recorded: ${failureLog.length}`);
     process.exit(1);
   }
-  console.log('All demo scenarios S1-S8 verified at 1440px and 375px!');
+  console.log(`All core demo scenarios verified across ${requestedBrowsers.join(', ')} at 1440px and 375px!`);
 }
 
 main().catch((err) => {
