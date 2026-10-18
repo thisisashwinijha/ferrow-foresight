@@ -628,7 +628,7 @@ export function MaintenancePlanningView({
             {safeDeferralsCount > 0 && (
               <button
                 onClick={handleBulkAcceptDeferrals}
-                className="px-3 py-1.5 rounded-btn bg-ok text-white text-xs font-semibold hover:opacity-90 transition-opacity flex items-center gap-1.5 shadow-xs"
+                className="px-3 py-1.5 rounded-btn bg-[#05603A] hover:bg-[#044E2E] text-white text-xs font-semibold hover:opacity-90 transition-opacity flex items-center gap-1.5 shadow-xs"
               >
                 <Check className="w-3.5 h-3.5" />
                 <span>Accept all safe deferrals ({safeDeferralsCount})</span>

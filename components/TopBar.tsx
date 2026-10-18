@@ -116,13 +116,13 @@ export function TopBar({
 
   return (
     <>
-      <header className="h-14 border-b border-line/30 bg-surface/70 backdrop-blur-md px-4 lg:px-6 flex items-center justify-between gap-4 z-30 sticky top-0">
+      <header className="h-14 border-b border-line/30 bg-surface/70 backdrop-blur-md px-3 sm:px-4 lg:px-6 flex items-center justify-between gap-2 sm:gap-4 z-30 sticky top-0">
         {/* Left: Mobile hamburger + Plant Selector */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
           {onToggleSidebar && (
             <button
               onClick={onToggleSidebar}
-              className="md:hidden p-1.5 rounded-btn hover:bg-surface-2 text-ink"
+              className="md:hidden p-1.5 rounded-btn hover:bg-surface-2 text-ink shrink-0"
               aria-label="Toggle navigation menu"
             >
               <Menu className="w-4 h-4" />
@@ -130,28 +130,28 @@ export function TopBar({
           )}
 
           {/* Plant Switcher */}
-          <div className="relative">
+          <div className="relative min-w-0">
             <button
               onClick={() => setIsPlantDropdownOpen(!isPlantDropdownOpen)}
-              className="flex items-center gap-2 px-2.5 py-1.5 rounded-btn hover:bg-surface-2 text-xs font-medium text-ink transition-colors"
+              className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 py-1.5 rounded-btn hover:bg-surface-2 text-xs font-medium text-ink transition-colors"
             >
-              <Building2 className="w-3.5 h-3.5 text-ink-muted" />
-              <span className="font-semibold">{selectedPlant?.id || plantId}</span>
-              <span className="text-ink-muted">·</span>
-              <span className="truncate max-w-[130px]">
+              <Building2 className="w-3.5 h-3.5 text-ink-muted shrink-0" />
+              <span className="font-semibold shrink-0">{selectedPlant?.id || plantId}</span>
+              <span className="hidden sm:inline text-ink-muted">·</span>
+              <span className="hidden sm:inline truncate max-w-[130px]">
                 {selectedPlant?.city || 'Network'}
               </span>
               {selectedPlant?.status === 'pilot' && (
-                <span className="px-1.5 py-0.5 bg-ok/10 text-ok text-[11px] font-medium rounded-chip">
+                <span className="px-1.5 py-0.5 bg-ok/10 text-ok text-[11px] font-medium rounded-chip shrink-0">
                   Pilot
                 </span>
               )}
               {selectedPlant?.status === 'shadow' && (
-                <span className="px-1.5 py-0.5 bg-ink/10 text-ink-muted text-[11px] font-medium rounded-chip">
+                <span className="px-1.5 py-0.5 bg-ink/10 text-ink-muted text-[11px] font-medium rounded-chip shrink-0">
                   Shadow
                 </span>
               )}
-              <ChevronDown className="w-3 h-3 text-ink-muted ml-0.5 opacity-60" />
+              <ChevronDown className="w-3 h-3 text-ink-muted ml-0.5 opacity-60 shrink-0" />
             </button>
 
             {isPlantDropdownOpen && (
@@ -233,7 +233,7 @@ export function TopBar({
         </div>
 
         {/* Right: Live Clock, Role, Demo badge, Theme toggle */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Live Clock with Local Plant Time */}
           <div className="hidden lg:flex items-center mr-2">
             <LiveClock timeZone={activeTz} />

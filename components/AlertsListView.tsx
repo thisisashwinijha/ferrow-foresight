@@ -220,7 +220,7 @@ export function AlertsListView({
           <select
             value={urgencyFilter}
             onChange={(e) => setUrgencyFilter(e.target.value)}
-            className="bg-surface-2/60 border border-line/30 rounded-btn px-2.5 py-1.5 text-xs text-ink focus:outline-hidden"
+            className="bg-surface border border-line rounded-btn px-2.5 py-1.5 text-xs text-ink focus:outline-hidden [&>option]:bg-surface [&>option]:text-ink shadow-2xs"
           >
             <option value="all">All urgencies</option>
             <option value="P1">P1 (Critical action)</option>
@@ -233,7 +233,7 @@ export function AlertsListView({
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-surface-2/60 border border-line/30 rounded-btn px-2.5 py-1.5 text-xs text-ink focus:outline-hidden"
+            className="bg-surface border border-line rounded-btn px-2.5 py-1.5 text-xs text-ink focus:outline-hidden [&>option]:bg-surface [&>option]:text-ink shadow-2xs"
           >
             <option value="all">All statuses</option>
             <option value="active">Active (Pending & Needs Review)</option>

@@ -270,40 +270,32 @@ export function KpisDashboardView({
   }, [activePlantSnapshots, falseAlarmStats]);
 
   return (
-    <div className="space-y-8 pb-16">
+    <div className="space-y-6 pb-16">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-line pb-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-              Performance telemetry
-            </span>
-            <span className="text-xs text-slate-400">
-              Plant {plantId} • {activePlant.name} ({activePlant.location})
-            </span>
-          </div>
-          <h1 className="text-2xl font-bold text-slate-100 tracking-tight">
+          <h1 className="text-2xl font-bold text-ink tracking-tight">
             KPI dashboard
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            6-month historical trends, small multiples analysis, cross-plant benchmarks, and pilot target trajectories.
+          <p className="text-xs text-ink-muted mt-1">
+            Plant {plantId} • {activePlant.name} ({activePlant.location}) — 6-month historical trends, small multiples analysis, and cross-plant benchmarks.
           </p>
         </div>
 
         {/* Quick Plant Toggle */}
-        <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded-lg p-1">
+        <div className="flex items-center gap-1.5 bg-surface border border-line rounded-btn p-1">
           {plants.map((p) => (
             <button
               key={p.id}
               onClick={() => setPlantId(p.id)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              className={`px-3 py-1.5 rounded-btn text-xs font-medium transition-all ${
                 p.id === plantId
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-ink-muted hover:text-ink hover:bg-surface-2'
               }`}
             >
               <span>{p.id}</span>
-              <span className="ml-1 text-[10px] opacity-70">
+              <span className={`ml-1 text-[10px] ${p.id === plantId ? 'text-indigo-100' : 'text-ink-muted'}`}>
                 {p.status === 'pilot' ? 'Pilot' : 'Shadow'}
               </span>
             </button>
@@ -312,27 +304,27 @@ export function KpisDashboardView({
       </div>
 
       {/* Pilot Targets Panel (Clearly labelled as targets, never as achieved results) */}
-      <div className="bg-slate-900/80 border border-indigo-900/30 rounded-xl p-5 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+      <div className="bg-surface border border-line rounded-card p-5 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-line pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-              <Target className="w-5 h-5" />
+            <div className="p-2 rounded-btn bg-agent-bg text-agent border border-agent-border">
+              <Target className="w-5 h-5 text-agent" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-semibold text-slate-100">
+                <h2 className="text-base font-semibold text-ink">
                   Pilot targets & baseline benchmarks
                 </h2>
-                <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-warning-bg text-warning border border-warning-border">
                   Target milestones in progress • Not achieved results
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-ink-muted mt-0.5">
                 Evaluation criteria established for the 12-week Ferrow Foresight pilot deployment.
               </p>
             </div>
           </div>
-          <div className="text-xs text-slate-500">
+          <div className="text-xs text-ink-muted">
             Baseline window: Apr 2026 – Sep 2026
           </div>
         </div>
@@ -341,28 +333,28 @@ export function KpisDashboardView({
           {pilotBaselineVsTargets.map((item, idx) => (
             <div
               key={idx}
-              className="bg-slate-950/60 border border-slate-800/80 rounded-lg p-3.5 space-y-2 flex flex-col justify-between"
+              className="bg-surface-2 border border-line rounded-btn p-3.5 space-y-2 flex flex-col justify-between"
             >
               <div>
-                <div className="text-xs font-semibold text-slate-300">{item.metric}</div>
+                <div className="text-xs font-semibold text-ink">{item.metric}</div>
                 <div className="mt-2 text-xs space-y-1">
-                  <div className="flex justify-between text-slate-400">
+                  <div className="flex justify-between text-ink-muted">
                     <span>Baseline:</span>
-                    <span className="font-medium text-slate-200">{item.baseline}</span>
+                    <span className="font-medium text-ink">{item.baseline}</span>
                   </div>
-                  <div className="flex justify-between text-indigo-400 font-medium">
+                  <div className="flex justify-between text-agent font-medium">
                     <span>Target:</span>
                     <span className="text-right">{item.target}</span>
                   </div>
                   {item.currentTracking && (
-                    <div className="flex justify-between text-emerald-400 font-medium pt-1 border-t border-slate-800/60 text-[11px]">
+                    <div className="flex justify-between text-ok font-medium pt-1 border-t border-line text-[11px]">
                       <span>Current tracking:</span>
                       <span className="text-right">{item.currentTracking}</span>
                     </div>
                   )}
                 </div>
               </div>
-              <div className="pt-2 border-t border-slate-800/60 text-[11px] text-slate-400 leading-snug">
+              <div className="pt-2 border-t border-line text-[11px] text-ink-muted leading-snug">
                 {item.rationale}
               </div>
             </div>
@@ -371,21 +363,21 @@ export function KpisDashboardView({
       </div>
 
       {/* Dynamic False Alarm Rate Callout */}
-      <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-surface border border-line rounded-card p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            <ShieldCheck className="w-5 h-5" />
+          <div className="p-2.5 rounded-btn bg-ok-bg text-ok border border-ok-border">
+            <ShieldCheck className="w-5 h-5 text-ok" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-slate-100">
+              <span className="text-sm font-semibold text-ink">
                 Live alert precision & false alarm tracking
               </span>
-              <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
+              <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-surface-2 text-ink border border-line">
                 Plant {plantId}
               </span>
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-ink-muted mt-0.5">
               Dynamically calculated from {falseAlarmStats.total} alerts ({falseAlarmStats.suppressed} suppressed, {falseAlarmStats.rejected} rejected by planners).
             </p>
           </div>
@@ -393,21 +385,21 @@ export function KpisDashboardView({
 
         <div className="flex items-center gap-6">
           <div className="text-right">
-            <div className="text-xs text-slate-400">False alarm rate</div>
-            <div className="text-xl font-bold text-amber-400">
+            <div className="text-xs text-ink-muted">False alarm rate</div>
+            <div className="text-xl font-bold text-warning">
               {falseAlarmStats.ratePct}%
             </div>
-            <div className="text-[10px] text-slate-500">Target: &lt; 15.0%</div>
+            <div className="text-[10px] text-ink-muted">Target: &lt; 15.0%</div>
           </div>
 
-          <div className="h-8 w-px bg-slate-800" />
+          <div className="h-8 w-px bg-line" />
 
           <div className="text-right">
-            <div className="text-xs text-slate-400">Alert precision</div>
-            <div className="text-xl font-bold text-emerald-400">
+            <div className="text-xs text-ink-muted">Alert precision</div>
+            <div className="text-xl font-bold text-ok">
               {falseAlarmStats.precisionPct}%
             </div>
-            <div className="text-[10px] text-emerald-400/80">Target: &gt;= 85.0%</div>
+            <div className="text-[10px] text-ok font-medium">Target: &gt;= 85.0%</div>
           </div>
         </div>
       </div>
@@ -415,10 +407,10 @@ export function KpisDashboardView({
       {/* 10 Small Multiples: 6-Month Trends */}
       <div className="space-y-4">
         <div>
-          <h2 className="text-base font-semibold text-slate-200">
+          <h2 className="text-base font-semibold text-ink">
             6-month trend small multiples (Apr 2026 – Sep 2026)
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-ink-muted mt-0.5">
             Key operational metrics for Plant {plantId} displayed in calm sparkline charts with month-over-month trajectory.
           </p>
         </div>
@@ -441,25 +433,25 @@ export function KpisDashboardView({
             return (
               <div
                 key={config.key}
-                className="bg-slate-900/60 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between space-y-2 hover:border-slate-700 transition-colors"
+                className="bg-surface border border-line rounded-card p-3.5 flex flex-col justify-between space-y-2 hover:border-agent/40 transition-colors"
               >
                 <div>
-                  <div className="flex items-center justify-between text-xs text-slate-400">
-                    <span className="font-medium text-slate-300">{config.title}</span>
-                    <span className="text-[10px] text-slate-500">{config.unit}</span>
+                  <div className="flex items-center justify-between text-xs text-ink-muted">
+                    <span className="font-medium text-ink">{config.title}</span>
+                    <span className="text-[10px] text-ink-muted">{config.unit}</span>
                   </div>
 
                   <div className="flex items-baseline justify-between mt-1">
-                    <div className="text-xl font-bold text-slate-100">
+                    <div className="text-xl font-bold text-ink">
                       {config.formatter(latestVal)}
                     </div>
                     <div
                       className={`flex items-center text-[11px] font-medium ${
                         delta === 0
-                          ? 'text-slate-500'
+                          ? 'text-ink-muted'
                           : isFavorable
-                          ? 'text-emerald-400'
-                          : 'text-rose-400'
+                          ? 'text-ok'
+                          : 'text-critical'
                       }`}
                     >
                       {delta === 0 ? (
@@ -483,7 +475,7 @@ export function KpisDashboardView({
                     >
                       <defs>
                         <linearGradient id={`grad-${config.key}`} x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor={config.color} stopOpacity={0.3} />
+                          <stop offset="5%" stopColor={config.color} stopOpacity={0.25} />
                           <stop offset="95%" stopColor={config.color} stopOpacity={0.0} />
                         </linearGradient>
                       </defs>
@@ -492,7 +484,7 @@ export function KpisDashboardView({
                           if (active && payload && payload.length) {
                             const data = payload[0].payload;
                             return (
-                              <div className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[11px] text-slate-200 shadow-md">
+                              <div className="bg-surface border border-line rounded-btn px-2 py-1 text-[11px] text-ink shadow-md">
                                 <span className="font-semibold">{data.month}: </span>
                                 <span>{config.formatter(data.value)}</span>
                               </div>
@@ -513,9 +505,9 @@ export function KpisDashboardView({
                   </ResponsiveContainer>
                 </div>
 
-                <div className="flex justify-between text-[10px] text-slate-500 border-t border-slate-800/60 pt-1">
+                <div className="flex justify-between text-[10px] text-ink-muted border-t border-line pt-1">
                   <span>{chartData[0]?.month}</span>
-                  <span className="text-slate-400">Sep latest</span>
+                  <span className="text-ink-muted">Sep latest</span>
                 </div>
               </div>
             );
@@ -524,25 +516,25 @@ export function KpisDashboardView({
       </div>
 
       {/* Cross-Plant Comparison Section (4 Onboarded Plants) */}
-      <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 space-y-4">
+      <div className="bg-surface border border-line rounded-card p-5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h2 className="text-base font-semibold text-slate-200">
+            <h2 className="text-base font-semibold text-ink">
               Cross-plant performance comparison
             </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-ink-muted mt-0.5">
               Comparison across the 4 onboarded facilities using latest month snapshots (September 2026).
             </p>
           </div>
-          <div className="text-xs text-slate-500">
+          <div className="text-xs text-ink-muted">
             Click any plant row to view its individual trend
           </div>
         </div>
 
-        <div className="overflow-x-auto rounded-lg border border-slate-800">
+        <div className="overflow-x-auto rounded-card border border-line">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-950/80 text-slate-400 border-b border-slate-800">
+              <tr className="bg-surface-2 text-ink-muted border-b border-line">
                 <th className="py-3 px-3 font-semibold">Plant</th>
                 <th className="py-3 px-3 font-semibold">Role</th>
                 <th className="py-3 px-3 font-semibold text-right">MTBF</th>
@@ -556,7 +548,7 @@ export function KpisDashboardView({
                 <th className="py-3 px-3 font-semibold text-right">False alarm rate</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 text-slate-300">
+            <tbody className="divide-y divide-line text-ink">
               {plantComparisons.map((row) => {
                 const isSelected = row.plant.id === plantId;
                 const snap = row.latest;
@@ -566,25 +558,25 @@ export function KpisDashboardView({
                     onClick={() => setPlantId(row.plant.id)}
                     className={`cursor-pointer transition-colors ${
                       isSelected
-                        ? 'bg-indigo-950/30 hover:bg-indigo-950/40'
-                        : 'hover:bg-slate-800/30'
+                        ? 'bg-agent-bg/30 hover:bg-agent-bg/40'
+                        : 'hover:bg-surface-2/40'
                     }`}
                   >
-                    <td className="py-3 px-3 font-medium text-slate-200 flex items-center gap-2">
-                      <span className="font-mono text-indigo-400 font-semibold">
+                    <td className="py-3 px-3 font-medium text-ink flex items-center gap-2">
+                      <span className="font-mono text-agent font-semibold">
                         {row.plant.id}
                       </span>
                       <span>{row.plant.name}</span>
                       {isSelected && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-agent" />
                       )}
                     </td>
                     <td className="py-3 px-3">
                       <span
                         className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
                           row.plant.status === 'pilot'
-                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                            : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                            ? 'bg-ok-bg text-ok border border-ok-border'
+                            : 'bg-agent-bg text-agent border border-agent-border'
                         }`}
                       >
                         {row.plant.status === 'pilot' ? 'Pilot plant' : 'Shadow'}
@@ -596,7 +588,7 @@ export function KpisDashboardView({
                     <td className="py-3 px-3 text-right">
                       {snap ? `${snap.mttr_hours.toFixed(2)} h` : '—'}
                     </td>
-                    <td className="py-3 px-3 text-right font-semibold text-emerald-400">
+                    <td className="py-3 px-3 text-right font-semibold text-ok">
                       {snap ? `${snap.availability_pct.toFixed(2)}%` : '—'}
                     </td>
                     <td className="py-3 px-3 text-right">
@@ -605,10 +597,10 @@ export function KpisDashboardView({
                     <td className="py-3 px-3 text-right">
                       {snap ? `${snap.pm_compliance_pct.toFixed(1)}%` : '—'}
                     </td>
-                    <td className="py-3 px-3 text-right text-amber-400 font-medium">
+                    <td className="py-3 px-3 text-right text-warning font-medium">
                       {snap ? `${snap.wasted_pm_pct.toFixed(1)}%` : '—'}
                     </td>
-                    <td className="py-3 px-3 text-right text-slate-300">
+                    <td className="py-3 px-3 text-right text-ink">
                       {snap ? `$${(snap.downtime_cost_usd / 1000).toFixed(1)}k` : '—'}
                     </td>
                     <td className="py-3 px-3 text-right">
@@ -618,8 +610,8 @@ export function KpisDashboardView({
                       <span
                         className={
                           row.falseAlarmRate <= 15
-                            ? 'text-emerald-400'
-                            : 'text-amber-400'
+                            ? 'text-ok'
+                            : 'text-warning'
                         }
                       >
                         {row.falseAlarmRate}%
