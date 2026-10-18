@@ -2,6 +2,9 @@
   "name": "ferrow-foresight",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -31,7 +34,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@types/node": "^20",
+    "@types/node": "^22",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "autoprefixer": "^10.4.20",
