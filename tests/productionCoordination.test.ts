@@ -101,4 +101,82 @@ describe('STEP 2: Production Coordination & Window Confirmation', () => {
     expect(stored.scheduled_window.production_status).toBe('reschedule_requested');
     expect(stored.scheduled_window.reschedule_reason).toBe(reason);
   });
+
+  it('POST /api/work-orders/[id]/window confirms window for exact, lowercase, and numeric ID formats', async () => {
+    const { POST: windowRoute } = await import('@/app/api/work-orders/[id]/window/route');
+    const { NextRequest } = await import('next/server');
+
+    // 1. Exact ID
+    const req1 = new NextRequest('http://localhost:3000/api/work-orders/WO-2201/window', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'confirm', confirmed_by: 'Production Manager' }),
+    });
+    const res1 = await windowRoute(req1, { params: { id: 'WO-2201' } });
+    expect(res1.status).toBe(200);
+    const json1 = await res1.json();
+    expect(json1.success).toBe(true);
+    expect(json1.workOrder.scheduled_window.production_status).toBe('confirmed');
+
+    // 2. Lowercase ID
+    const req2 = new NextRequest('http://localhost:3000/api/work-orders/wo-2201/window', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'confirm' }),
+    });
+    const res2 = await windowRoute(req2, { params: { id: 'wo-2201' } });
+    expect(res2.status).toBe(200);
+    const json2 = await res2.json();
+    expect(json2.success).toBe(true);
+
+    // 3. Numeric ID (without WO- prefix)
+    const req3 = new NextRequest('http://localhost:3000/api/work-orders/2201/window', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'confirm' }),
+    });
+    const res3 = await windowRoute(req3, { params: { id: '2201' } });
+    expect(res3.status).toBe(200);
+    const json3 = await res3.json();
+    expect(json3.success).toBe(true);
+  });
+
+  it('POST /api/work-orders/[id]/window handles request-another-window and request_reschedule with validation', async () => {
+    const { POST: windowRoute } = await import('@/app/api/work-orders/[id]/window/route');
+    const { NextRequest } = await import('next/server');
+
+    // Reschedule with reason
+    const req = new NextRequest('http://localhost:3000/api/work-orders/WO-2201/window', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'request_another_window',
+        reason: 'Conflict with export batch run on Line 1',
+      }),
+    });
+    const res = await windowRoute(req, { params: { id: 'WO-2201' } });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.success).toBe(true);
+    expect(json.workOrder.scheduled_window.production_status).toBe('reschedule_requested');
+    expect(json.workOrder.scheduled_window.reschedule_reason).toContain('Conflict with export batch');
+
+    // Reschedule without reason returns 400
+    const invalidReq = new NextRequest('http://localhost:3000/api/work-orders/WO-2201/window', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'request_reschedule', reason: '' }),
+    });
+    const invalidRes = await windowRoute(invalidReq, { params: { id: 'WO-2201' } });
+    expect(invalidRes.status).toBe(400);
+
+    // Nonexistent ID returns 404
+    const notFoundReq = new NextRequest('http://localhost:3000/api/work-orders/WO-999999/window', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'confirm' }),
+    });
+    const notFoundRes = await windowRoute(notFoundReq, { params: { id: 'WO-999999' } });
+    expect(notFoundRes.status).toBe(404);
+  });
 });

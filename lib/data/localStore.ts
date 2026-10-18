@@ -103,7 +103,17 @@ export function mutateLocalWorkOrder(
 ): WorkOrder | null {
   const store = getLocalStoreData();
   const workOrders: WorkOrder[] = (store.work_orders as unknown as WorkOrder[]) || [];
-  const index = workOrders.findIndex((w) => w.id === woId);
+  const cleanId = (woId || '').trim().toLowerCase();
+  const index = workOrders.findIndex((w) => {
+    if (!w || !w.id) return false;
+    const wClean = w.id.trim().toLowerCase();
+    return (
+      w.id === woId ||
+      wClean === cleanId ||
+      wClean === `wo-${cleanId}` ||
+      `wo-${wClean}` === cleanId
+    );
+  });
   if (index === -1) return null;
 
   workOrders[index] = { ...workOrders[index], ...updates };

@@ -61,7 +61,7 @@ describe('Plant Copilot Service & Safety Guardrails', () => {
     expect(response.follow_up_suggestions.length).toBe(2);
   });
 
-  it('explains what is blocking work order WO-2201', async () => {
+  it('explains what is blocking work order WO-2201 and treats valid LOTO cert as warning only', async () => {
     const response = await copilotService('What is blocking work order WO-2201?', {
       plant_id: 'P-07',
       work_order_id: 'WO-2201',
@@ -72,6 +72,9 @@ describe('Plant Copilot Service & Safety Guardrails', () => {
     expect(response.cited_ids).toContain('P07-M09');
     expect(response.cited_ids).toContain('SP-007');
     expect(response.answer.toLowerCase()).toContain('loto');
+    // Bug 7: A LOTO certification that is still valid is not a blocker; mention expiry within 30 days only as a warning
+    expect(response.answer.toLowerCase()).toContain('warning: assigned technician');
+    expect(response.answer.toLowerCase()).toContain('valid today');
     expect(response.follow_up_suggestions.length).toBe(2);
   });
 
