@@ -29,12 +29,12 @@ async function run() {
   let totalOverflows = 0;
 
   for (const vp of VIEWPORTS) {
+    const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height } });
+    const page = await context.newPage();
     for (const path of PAGES) {
-      const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height } });
-      const page = await context.newPage();
       try {
         await page.goto(`${BASE_URL}${path}`, { waitUntil: 'domcontentloaded', timeout: 45000 });
-        await page.waitForTimeout(400);
+        await page.waitForTimeout(250);
 
         // Check if document or body horizontally overflows the viewport
         const overflow = await page.evaluate(() => {
@@ -52,11 +52,10 @@ async function run() {
         }
       } catch (err: any) {
         console.error(`Error on ${path} (${vp.name}):`, err.message);
-      } finally {
-        await page.close();
-        await context.close();
       }
     }
+    await page.close();
+    await context.close();
   }
 
   await browser.close();

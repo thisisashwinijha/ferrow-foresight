@@ -1,10 +1,10 @@
 # QA Test Results Record
 
-**Date**: 2026-10-18T21:47:08.118Z (Sun, 18 Oct 2026 21:47:08 GMT)  
+**Date**: 2026-10-18T21:58:48.187Z (Sun, 18 Oct 2026 21:58:48 GMT)  
 **Branch**: `dev`  
-**Git Commit**: `58abf6ce673ec8725006e65ee970616541bb112a`  
+**Git Commit**: `5404ff6fd0cfdd3c3b97771fd9bdb98da69ab2bb`  
 **Evaluation Mode**: `AGENT_PROVIDER=cached` (0 external API credits spent)  
-**Total Execution Time**: 170.29s  
+**Total Execution Time**: 185.06s  
 
 ## Reproduction Command
 
@@ -18,13 +18,13 @@ npm run qa
 
 | # | Gate / Test Suite | Command | Duration | Result |
 |---|---|---|---|:---:|
-| 1 | **TypeScript Typecheck** | `npm run typecheck` | 1.99s | ✅ PASS |
-| 2 | **ESLint Code Quality** | `npm run lint` | 2.19s | ✅ PASS |
-| 3 | **Vitest Unit & Integration Suite** | `npm test` | 1.83s | ✅ PASS |
-| 4 | **Next.js Production Build** | `npm run build` | 23.01s | ✅ PASS |
-| 5 | **Cross-Browser E2E Scenarios (Chromium, Firefox, WebKit)** | `tsx scripts/runE2EScenarios.ts` | 92.12s | ✅ PASS |
-| 6 | **Axe-Core Color Contrast Compliance** | `tsx scripts/checkContrast.ts` | 23.54s | ✅ PASS |
-| 7 | **Responsive Viewport Overflow Check** | `tsx scripts/checkOverflow.ts` | 18.91s | ✅ PASS |
+| 1 | **TypeScript Typecheck** | `npm run typecheck` | 2.04s | ✅ PASS |
+| 2 | **ESLint Code Quality** | `npm run lint` | 3.67s | ✅ PASS |
+| 3 | **Vitest Unit & Integration Suite** | `npm test` | 2.44s | ✅ PASS |
+| 4 | **Next.js Production Build** | `npm run build` | 22.14s | ✅ PASS |
+| 5 | **Cross-Browser E2E Scenarios (Chromium, Firefox, WebKit)** | `tsx scripts/runE2EScenarios.ts` | 89.22s | ✅ PASS |
+| 6 | **Axe-Core Color Contrast Compliance** | `tsx scripts/checkContrast.ts` | 16.81s | ✅ PASS |
+| 7 | **Responsive Viewport Overflow Check** | `tsx scripts/checkOverflow.ts` | 40.88s | ✅ PASS |
 
 ## Detailed Findings
 
@@ -32,49 +32,49 @@ npm run qa
 
 - **Status**: PASSED
 - **Command**: `npm run typecheck`
-- **Duration**: 1.99s
+- **Duration**: 2.04s
 - **Telemetry / Notes**: Clean execution, all checks passed
 
 ### 2. ESLint Code Quality
 
 - **Status**: PASSED
 - **Command**: `npm run lint`
-- **Duration**: 2.19s
+- **Duration**: 3.67s
 - **Telemetry / Notes**: Clean execution, all checks passed
 
 ### 3. Vitest Unit & Integration Suite
 
 - **Status**: PASSED
 - **Command**: `npm test`
-- **Duration**: 1.83s
+- **Duration**: 2.44s
 - **Telemetry / Notes**: Clean execution, all checks passed
 
 ### 4. Next.js Production Build
 
 - **Status**: PASSED
 - **Command**: `npm run build`
-- **Duration**: 23.01s
+- **Duration**: 22.14s
 - **Telemetry / Notes**: Clean execution, all checks passed
 
 ### 5. Cross-Browser E2E Scenarios (Chromium, Firefox, WebKit)
 
 - **Status**: PASSED
 - **Command**: `tsx scripts/runE2EScenarios.ts`
-- **Duration**: 92.12s
+- **Duration**: 89.22s
 - **Telemetry / Notes**: Clean execution, all checks passed
 
 ### 6. Axe-Core Color Contrast Compliance
 
 - **Status**: PASSED
 - **Command**: `tsx scripts/checkContrast.ts`
-- **Duration**: 23.54s
+- **Duration**: 16.81s
 - **Telemetry / Notes**: Clean execution, all checks passed
 
 ### 7. Responsive Viewport Overflow Check
 
 - **Status**: PASSED
 - **Command**: `tsx scripts/checkOverflow.ts`
-- **Duration**: 18.91s
+- **Duration**: 40.88s
 - **Telemetry / Notes**: Clean execution, all checks passed
 
 ## Summary

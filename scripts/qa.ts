@@ -40,6 +40,18 @@ function killPort(port: number) {
   } catch {}
 }
 
+function stopDevServer() {
+  killPort(3000);
+  killPort(3001);
+  killPort(3002);
+  try {
+    execSync('pkill -9 -f "npm run dev" || true', { stdio: 'ignore' });
+    execSync('pkill -9 -f "next dev" || true', { stdio: 'ignore' });
+    execSync('pkill -9 -f "next start" || true', { stdio: 'ignore' });
+    execSync('pkill -9 -f "next-server" || true', { stdio: 'ignore' });
+  } catch {}
+}
+
 function runStep(name: string, command: string, env: Record<string, string> = {}): boolean {
   console.log(`\n▶ [QA] ${name}...`);
   console.log(`  $ ${command}`);
@@ -95,9 +107,7 @@ async function main() {
   const now = new Date();
 
   // Clean ports and local state before QA
-  killPort(3000);
-  killPort(3001);
-  killPort(3002);
+  stopDevServer();
   execSync('rm -f data/local_state.json');
   execSync('sleep 1');
 
@@ -111,6 +121,8 @@ async function main() {
   runStep('Vitest Unit & Integration Suite', 'npm test');
 
   // 4. Clean Production Build (Rule: stop dev server before build)
+  stopDevServer();
+  execSync('sleep 1');
   execSync('rm -rf .next && rm -f data/local_state.json');
   const buildSuccess = runStep('Next.js Production Build', 'npm run build');
 
@@ -145,7 +157,7 @@ async function main() {
 
       // Stop production server
       console.log('\n[QA Lifecycle] Stopping production server...');
-      killPort(3000);
+      stopDevServer();
       execSync('sleep 1');
     }
   }
