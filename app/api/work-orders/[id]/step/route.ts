@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { getWorkOrderByIdSync } from '@/lib/data/workOrders';
 import { mutateLocalWorkOrder } from '@/lib/data/localStore';
@@ -6,6 +7,7 @@ import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
 import { WorkOrder } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 const StepPayloadSchema = z.object({
   step_index: z.number().int().min(0),
@@ -119,10 +121,18 @@ export async function POST(
 
     // Check if all LOTO steps are now completed
     const allLotoDone = checklist.slice(0, 6).every((s) => s.done);
-    if (allLotoDone && (!lotoPermit || workOrder.status === 'scheduled' || workOrder.status === 'raised')) {
-      const plantCode = workOrder.plant_id || 'P07';
-      lotoPermit = lotoPermit || `LOTO-${plantCode}-${Math.floor(1000 + Math.random() * 9000)}`;
-      newStatus = 'loto_applied';
+    if (allLotoDone) {
+      if (!lotoPermit || workOrder.status === 'scheduled' || workOrder.status === 'raised') {
+        const plantCode = (workOrder.plant_id || 'P-07').replace('-', '');
+        lotoPermit = lotoPermit || `LOTO-${plantCode}-${Math.floor(1000 + Math.random() * 9000)}`;
+        newStatus = 'loto_applied';
+      }
+    } else {
+      // Before the last LOTO step is completed, LOTO permit must not exist
+      lotoPermit = null;
+      if (newStatus === 'loto_applied') {
+        newStatus = 'scheduled';
+      }
     }
 
     // Check if task steps have started
@@ -147,6 +157,18 @@ export async function POST(
       } catch (e) {
         console.warn('Could not sync step tick to Supabase:', e);
       }
+    }
+
+    // Refresh affected views
+    try {
+      revalidatePath('/');
+      revalidatePath('/work-orders');
+      revalidatePath(`/work-orders/${woId}`);
+      if (workOrder.machine_id) {
+        revalidatePath(`/machines/${workOrder.machine_id}`);
+      }
+    } catch (e) {
+      console.warn('revalidatePath warning in step route:', e);
     }
 
     return NextResponse.json({

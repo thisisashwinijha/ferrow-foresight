@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { X, ArrowRight, Bot, Shield, AlertTriangle, CheckCircle2, Clock, UserCheck } from 'lucide-react';
 import { Alert, Plant } from '@/lib/types';
+import { formatFailureMode } from '@/lib/lifecycle';
 import { usePlantContext } from './PlantContext';
 
 interface AlertDetailSheetProps {
@@ -76,8 +77,8 @@ export function AlertDetailSheet({ alert, plant, onClose }: AlertDetailSheetProp
             <div className="text-lg font-semibold text-ink mt-0.5">
               {alert.machine_id}
             </div>
-            <div className="text-sm font-medium text-ink capitalize mt-0.5">
-              {alert.failure_mode.replace('_', ' ')}
+            <div className="text-sm font-medium text-ink mt-0.5">
+              {formatFailureMode(alert.failure_mode)}
             </div>
           </div>
 

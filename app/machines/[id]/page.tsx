@@ -13,15 +13,18 @@ import { getWorkOrders } from '@/lib/data/workOrders';
 import { getSparesByMachineType } from '@/lib/data/spares';
 import { getKnowledgeLibrary } from '@/lib/data/knowledge';
 import { getTechnicians } from '@/lib/data/technicians';
+import { unstable_noStore as noStore } from 'next/cache';
 import { MachineHistoryCard } from '@/components/MachineHistoryCard';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function MachineDetailPage({
   params,
 }: {
   params: { id: string };
 }) {
+  noStore();
   const machine = await getMachineById(params.id);
 
   if (!machine) {

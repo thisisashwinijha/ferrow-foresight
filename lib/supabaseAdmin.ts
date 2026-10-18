@@ -25,6 +25,11 @@ export function getSupabaseAdminClient(): SupabaseClient | null {
         autoRefreshToken: false,
       },
       global: {
+        fetch: (url, options = {}) =>
+          fetch(url, {
+            ...options,
+            cache: 'no-store',
+          }),
         headers: {
           apikey: serviceRoleKey,
           Authorization: `Bearer ${serviceRoleKey}`,

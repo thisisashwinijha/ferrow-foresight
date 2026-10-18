@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Alert, Plant } from '@/lib/types';
+import { formatFailureMode } from '@/lib/lifecycle';
 import { ShieldCheck, ArrowRight, Bot } from 'lucide-react';
 import { usePlantContext } from './PlantContext';
 
@@ -75,7 +76,7 @@ export function AttentionSection({ alerts, plant, onSelectAlert }: AttentionSect
                       <span className="font-mono text-ink font-semibold">{alert.machine_id}</span>
                       <span className="text-ink-muted">·</span>
                       <span className="truncate max-w-[140px] text-ink-muted">
-                        {alert.failure_mode.replace('_', ' ')}
+                        {formatFailureMode(alert.failure_mode)}
                       </span>
                     </div>
 

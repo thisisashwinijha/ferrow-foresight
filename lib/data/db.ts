@@ -2,6 +2,7 @@ import { getSupabaseBrowserClient, withTimeout } from '../supabase';
 import { getLocalStoreData } from './localStore';
 import { markDatabaseAvailable, markDatabaseUnavailable } from './dbState';
 import { SupabaseClient } from '@supabase/supabase-js';
+import { unstable_noStore as noStore } from 'next/cache';
 
 let unavailableUntil = 0;
 
@@ -32,6 +33,12 @@ export async function queryWithFallback<T>(
   fallbackFn: () => T,
   context = 'query'
 ): Promise<T> {
+  try {
+    noStore();
+  } catch {
+    // outside request context (e.g. vitest or scripts)
+  }
+
   // If circuit breaker is open (recent failure/timeout), return fallback immediately
   if (isDbCircuitOpen()) {
     return fallbackFn();

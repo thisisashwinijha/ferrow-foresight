@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Alert, Plant } from '@/lib/types';
+import { formatFailureMode } from '@/lib/lifecycle';
 import { AlertTriangle, Clock, ArrowRight, ShieldCheck, UserCheck } from 'lucide-react';
 import { usePlantContext } from './PlantContext';
 
@@ -24,8 +25,8 @@ export function ApprovalsQueue({ alerts, plant }: ApprovalsQueueProps) {
       <div className="p-3 border-b border-line flex items-center justify-between bg-surface-2/40">
         <div className="flex items-center gap-2">
           <Clock className="w-3.5 h-3.5 text-medium" />
-          <h2 className="text-xs font-bold text-ink uppercase tracking-wider">
-            Approvals Queue ({pendingAlerts.length})
+          <h2 className="text-xs font-semibold text-ink">
+            Approvals queue ({pendingAlerts.length})
           </h2>
         </div>
         <span className="text-[10px] text-ink-muted">
@@ -63,13 +64,13 @@ export function ApprovalsQueue({ alerts, plant }: ApprovalsQueueProps) {
                           {alert.urgency}
                         </span>
                       </div>
-                      <span className="text-[10px] font-mono text-ink-muted uppercase">
+                      <span className="text-[10px] text-ink-muted capitalize">
                         {alert.status.replace('_', ' ')}
                       </span>
                     </div>
 
-                    <div className="text-xs font-semibold text-ink mt-1.5 capitalize">
-                      {alert.failure_mode.replace('_', ' ')}
+                    <div className="text-xs font-semibold text-ink mt-1.5">
+                      {formatFailureMode(alert.failure_mode)}
                     </div>
                     <p className="text-[11px] text-ink-muted mt-1 line-clamp-2">
                       {alert.recommended_action}

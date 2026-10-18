@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { getAlertByIdSync } from '@/lib/data/alerts';
 import { getMachineByIdSync } from '@/lib/data/machines';
@@ -12,6 +13,7 @@ import { STANDARD_LOTO_CHECKLIST } from '@/lib/guardrails';
 import { WorkOrder, Alert } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 const ApprovePayloadSchema = z.object({
   decided_by: z.string().default('Operator'),
@@ -125,7 +127,7 @@ export async function POST(
       scheduled_window: scheduledWindow,
       spares_reserved: sparesReserved,
       checklist,
-      loto_permit_no: alert.loto_required ? `LOTO-${alert.machine_id}-${randomSuffix}` : null,
+      loto_permit_no: null,
       closure_notes: null,
       root_cause: null,
       downtime_hours: null,
@@ -178,6 +180,19 @@ export async function POST(
       } catch (err) {
         console.warn('Failed to sync approval to Supabase, local state retained:', err);
       }
+    }
+
+    // Refresh affected views
+    try {
+      revalidatePath('/');
+      revalidatePath('/alerts');
+      revalidatePath(`/alerts/${alertId}`);
+      revalidatePath('/work-orders');
+      if (alert.machine_id) {
+        revalidatePath(`/machines/${alert.machine_id}`);
+      }
+    } catch (e) {
+      console.warn('revalidatePath warning in approve route:', e);
     }
 
     return NextResponse.json({

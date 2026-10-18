@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { getAlertByIdSync } from '@/lib/data/alerts';
 import { mutateLocalAlert } from '@/lib/data/localStore';
@@ -6,6 +7,7 @@ import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
 import { Alert } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 const RejectPayloadSchema = z.object({
   decided_by: z.string().default('Operator'),
@@ -72,6 +74,18 @@ export async function POST(
       } catch (err) {
         console.warn('Failed to sync rejection to Supabase, local state retained:', err);
       }
+    }
+
+    // Refresh affected views
+    try {
+      revalidatePath('/');
+      revalidatePath('/alerts');
+      revalidatePath(`/alerts/${alertId}`);
+      if (alert.machine_id) {
+        revalidatePath(`/machines/${alert.machine_id}`);
+      }
+    } catch (e) {
+      console.warn('revalidatePath warning in reject route:', e);
     }
 
     return NextResponse.json({

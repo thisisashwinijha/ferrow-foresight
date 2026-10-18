@@ -9,15 +9,18 @@ import { getLineById } from '@/lib/data/lines';
 import { getTechnicians, getCertifications } from '@/lib/data/technicians';
 import { getSpares } from '@/lib/data/spares';
 import { getWorkOrders } from '@/lib/data/workOrders';
+import { unstable_noStore as noStore } from 'next/cache';
 import { AlertDetailView } from '@/components/AlertDetailView';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function AlertDetailPage({
   params,
 }: {
   params: { id: string };
 }) {
+  noStore();
   const alert = await getAlertById(params.id);
 
   if (!alert) {

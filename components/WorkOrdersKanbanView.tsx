@@ -304,7 +304,7 @@ export function WorkOrdersKanbanView({
               {/* Column Header */}
               <div className="flex items-center justify-between pb-2 border-b border-line/20">
                 <div className="flex items-center gap-1.5">
-                  <h3 className="text-xs font-semibold text-ink uppercase tracking-wider">
+                  <h3 className="text-xs font-semibold text-ink">
                     {col.title}
                   </h3>
                   <span className="px-1.5 py-0.2 rounded-full text-[11px] font-mono font-medium bg-surface-2 text-ink-muted">
@@ -378,11 +378,16 @@ export function WorkOrdersKanbanView({
                           </div>
                         )}
 
-                        {/* LOTO permit badge if applied */}
-                        {wo.loto_permit_no && (
+                        {/* LOTO permit badge if applied, or LOTO pending */}
+                        {wo.loto_permit_no ? (
                           <div className="flex items-center gap-1.5 text-[11px] text-ok bg-ok/10 px-2 py-0.5 rounded-chip font-mono">
                             <Shield className="w-3 h-3 shrink-0" />
                             <span className="truncate">{wo.loto_permit_no}</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 text-[11px] text-ink-muted bg-surface-2/60 px-2 py-0.5 rounded-chip">
+                            <Shield className="w-3 h-3 opacity-60 shrink-0" />
+                            <span>LOTO pending</span>
                           </div>
                         )}
 

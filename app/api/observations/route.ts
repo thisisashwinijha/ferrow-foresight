@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { triageService } from '@/lib/triageService';
+import { formatFailureMode } from '@/lib/lifecycle';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 const ObservationPayloadSchema = z.object({
   machine_id: z.string().min(1, 'Machine selection is required'),
@@ -34,11 +37,23 @@ export async function POST(request: NextRequest) {
 
     const result = await triageService(parseResult.data);
 
+    // Refresh affected views
+    try {
+      revalidatePath('/');
+      revalidatePath('/alerts');
+      revalidatePath(`/alerts/${result.alert.id}`);
+      if (parseResult.data.machine_id) {
+        revalidatePath(`/machines/${parseResult.data.machine_id}`);
+      }
+    } catch (e) {
+      console.warn('revalidatePath warning in observations route:', e);
+    }
+
     return NextResponse.json({
       success: true,
       observation: result.observation,
       alert: result.alert,
-      message: `Observation logged. AI triage: ${result.alert.failure_mode} · Urgency ${result.alert.urgency}`,
+      message: `Observation logged. AI triage: ${formatFailureMode(result.alert.failure_mode)} · Urgency ${result.alert.urgency}`,
     });
   } catch (err: any) {
     console.error('Error submitting observation:', err);

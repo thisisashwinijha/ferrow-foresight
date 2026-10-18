@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { getWorkOrderByIdSync } from '@/lib/data/workOrders';
 import { closeLocalWorkOrder } from '@/lib/data/localStore';
 import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 const ClosePayloadSchema = z.object({
   root_cause: z.string().min(1, 'Root cause is required to close a work order'),
@@ -127,6 +129,19 @@ export async function POST(
       } catch (e) {
         console.warn('Could not sync work order closure to Supabase:', e);
       }
+    }
+
+    // Refresh affected views
+    try {
+      revalidatePath('/');
+      revalidatePath('/work-orders');
+      revalidatePath(`/work-orders/${woId}`);
+      revalidatePath('/alerts');
+      if (workOrder.machine_id) {
+        revalidatePath(`/machines/${workOrder.machine_id}`);
+      }
+    } catch (e) {
+      console.warn('revalidatePath warning in close route:', e);
     }
 
     return NextResponse.json({

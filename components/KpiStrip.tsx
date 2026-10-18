@@ -105,7 +105,7 @@ export function KpiStrip({ current, previous, alerts }: KpiStripProps) {
         }`}>
           <div className="flex items-center justify-between text-xs text-ink-muted">
             <span>Open P1 alerts</span>
-            <span className="text-[11px] font-medium">{periodLabel}</span>
+            <span className="text-[11px] font-medium">Now</span>
           </div>
 
           <div>

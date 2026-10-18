@@ -11,6 +11,7 @@ import {
   Alert as AlertType,
   Observation,
 } from '@/lib/types';
+import { formatFailureMode } from '@/lib/lifecycle';
 import { usePlantContext } from './PlantContext';
 import { useToast } from './ToastContext';
 import {
@@ -280,6 +281,7 @@ export function TechnicianCaptureView({
       setTriageResult(data);
       setStep(4);
       showToast(data.message || 'Observation logged and triage alert raised.', 'success');
+      router.refresh();
     } catch (err: any) {
       showToast(err?.message || 'Network error while logging observation.', 'alert');
     } finally {
@@ -758,7 +760,7 @@ export function TechnicianCaptureView({
                 <div className="space-y-1">
                   <div className="text-xs font-semibold text-ink flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-accent" />
-                    <span>{triageResult.alert.failure_mode}</span>
+                    <span>{formatFailureMode(triageResult.alert.failure_mode)}</span>
                   </div>
                   <p className="text-xs text-ink-muted leading-relaxed">
                     {triageResult.alert.recommended_action}

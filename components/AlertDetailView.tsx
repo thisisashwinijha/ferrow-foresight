@@ -20,6 +20,7 @@ import {
   GuardrailCheckResult,
   STANDARD_LOTO_CHECKLIST,
 } from '@/lib/guardrails';
+import { formatFailureMode } from '@/lib/lifecycle';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -181,6 +182,7 @@ export function AlertDetailView({
         setAlert(data.alert);
         setCreatedWorkOrder(data.workOrder);
         showToast(`Alert approved. Work order ${data.workOrder.id} scheduled!`, 'info');
+        router.refresh();
       } else {
         showToast(data.error || 'Failed to approve alert', 'warning');
       }
@@ -214,6 +216,7 @@ export function AlertDetailView({
         setAlert(data.alert);
         setShowRejectModal(false);
         showToast(`Alert ${alert.id} rejected with reason`, 'info');
+        router.refresh();
       } else {
         showToast(data.error || 'Failed to reject alert', 'warning');
       }
@@ -267,7 +270,7 @@ export function AlertDetailView({
               </span>
 
               <h1 className="text-2xl font-semibold text-ink tracking-tight">
-                {alert.id} · {alert.failure_mode.replace('_', ' ').toUpperCase()}
+                {alert.id} · {formatFailureMode(alert.failure_mode)}
               </h1>
 
               {(() => {
@@ -276,7 +279,7 @@ export function AlertDetailView({
                   (alert.status === 'approved' && createdWorkOrder?.status === 'closed');
                 return (
                   <span
-                    className={`px-2.5 py-0.5 rounded-chip text-xs font-medium ${
+                    className={`px-2.5 py-0.5 rounded-chip text-xs font-medium capitalize ${
                       isAlertResolved
                         ? 'bg-ok/15 text-ok font-semibold'
                         : alert.status === 'approved'
@@ -313,14 +316,14 @@ export function AlertDetailView({
           {/* Quick Metrics (Confidence & Cost Avoidance) */}
           <div className="flex items-center gap-3 shrink-0">
             <div className="px-4 py-2 rounded-card bg-surface-2/60 border border-line/20 text-center min-w-[110px]">
-              <span className="text-[11px] text-ink-muted block uppercase font-medium">Confidence</span>
+              <span className="text-[11px] text-ink-muted block font-medium">Confidence</span>
               <span className="text-2xl font-light text-ink tabular-nums">
                 {(alert.confidence * 100).toFixed(0)}%
               </span>
             </div>
 
             <div className="px-4 py-2 rounded-card bg-surface-2/60 border border-line/20 text-center min-w-[130px]">
-              <span className="text-[11px] text-ink-muted block uppercase font-medium">Est. Downtime Risk</span>
+              <span className="text-[11px] text-ink-muted block font-medium">Est. downtime risk</span>
               <span className="text-2xl font-light text-danger tabular-nums">
                 ${(alert.est_failure_cost_usd / 1000).toFixed(0)}k
               </span>
@@ -361,14 +364,14 @@ export function AlertDetailView({
                 ) : (
                   <>
                     Work order <strong>{createdWorkOrder.id}</strong> scheduled for {createdWorkOrder.scheduled_window?.date} (Shift {createdWorkOrder.scheduled_window?.shift}).
-                    {createdWorkOrder.loto_permit_no && ` LOTO permit: ${createdWorkOrder.loto_permit_no}.`}
+                    {createdWorkOrder.loto_permit_no ? ` LOTO permit: ${createdWorkOrder.loto_permit_no}.` : ' LOTO pending.'}
                   </>
                 )}
               </span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <span className="font-mono text-[11px] font-semibold px-2 py-0.5 rounded-chip bg-surface-3 text-ink">
-                {createdWorkOrder.status.replace('_', ' ').toUpperCase()}
+              <span className="font-mono text-[11px] font-semibold px-2 py-0.5 rounded-chip bg-surface-3 text-ink capitalize">
+                {createdWorkOrder.status.replace('_', ' ')}
               </span>
               <Link
                 href={`/work-orders/${createdWorkOrder.id}`}
@@ -411,8 +414,8 @@ export function AlertDetailView({
 
             <div className="space-y-3">
               <div>
-                <span className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider block mb-1">
-                  Clinical Assessment
+                <span className="text-[11px] font-semibold text-ink-muted block mb-1">
+                  Clinical assessment
                 </span>
                 <p className="text-xs text-ink leading-relaxed p-3.5 rounded-btn bg-surface-2/40 border border-line/20">
                   {alert.reasoning}
@@ -420,8 +423,8 @@ export function AlertDetailView({
               </div>
 
               <div>
-                <span className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider block mb-1">
-                  Recommended Technician Action
+                <span className="text-[11px] font-semibold text-ink-muted block mb-1">
+                  Recommended technician action
                 </span>
                 <div className="p-3.5 rounded-btn bg-surface-2/40 border border-line/20 space-y-2">
                   <p className="text-xs text-ink font-medium leading-relaxed">
@@ -441,7 +444,7 @@ export function AlertDetailView({
           {/* Evidence List */}
           <div className="bg-surface rounded-card p-6 border border-line/30 shadow-xs space-y-3">
             <h2 className="text-base font-semibold text-ink flex items-center gap-2">
-              <Shield className="w-4 h-4 text-ink-muted" /> Supporting Evidence ({alert.evidence?.length || 0})
+              <Shield className="w-4 h-4 text-ink-muted" /> Supporting evidence ({alert.evidence?.length || 0})
             </h2>
 
             <div className="space-y-2 pt-1">
@@ -454,7 +457,7 @@ export function AlertDetailView({
                     {item.id}
                   </span>
                   <div className="space-y-0.5 flex-1">
-                    <span className="text-[11px] font-medium text-ink-muted uppercase">
+                    <span className="text-[11px] font-medium text-ink-muted capitalize">
                       {item.type}
                     </span>
                     <p className="text-ink leading-relaxed">{item.text}</p>
@@ -467,13 +470,13 @@ export function AlertDetailView({
           {/* Cost Comparison Visual (Failure vs Intervention) */}
           <div className="bg-surface rounded-card p-6 border border-line/30 shadow-xs space-y-4">
             <h2 className="text-base font-semibold text-ink flex items-center gap-2">
-              <DollarSign className="w-4 h-4 text-ink-muted" /> Cost Impact & ROI Analysis
+              <DollarSign className="w-4 h-4 text-ink-muted" /> Cost impact & ROI analysis
             </h2>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 rounded-btn bg-surface-2/50 border border-line/20 space-y-1">
-                <span className="text-[11px] text-ink-muted font-medium uppercase">
-                  Unplanned Failure Cost
+                <span className="text-[11px] text-ink-muted font-medium">
+                  Unplanned failure cost
                 </span>
                 <p className="text-2xl font-light text-danger tabular-nums">
                   ${alert.est_failure_cost_usd.toLocaleString()}
@@ -484,8 +487,8 @@ export function AlertDetailView({
               </div>
 
               <div className="p-4 rounded-btn bg-surface-2/50 border border-line/20 space-y-1">
-                <span className="text-[11px] text-ink-muted font-medium uppercase">
-                  Planned Intervention Cost
+                <span className="text-[11px] text-ink-muted font-medium">
+                  Planned intervention cost
                 </span>
                 <p className="text-2xl font-light text-ok tabular-nums">
                   ${alert.est_intervention_cost_usd.toLocaleString()}
@@ -549,7 +552,7 @@ export function AlertDetailView({
             {alert.spares_check && alert.spares_check.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-xs text-left">
-                  <thead className="text-[11px] text-ink-muted uppercase border-b border-line/30">
+                  <thead className="text-[11px] text-ink-muted border-b border-line/30">
                     <tr>
                       <th className="pb-2 font-medium">Part ID</th>
                       <th className="pb-2 font-medium">Part Name</th>
@@ -602,8 +605,8 @@ export function AlertDetailView({
           {/* Action Approval Card */}
           {isPending && (
             <div className="bg-surface rounded-card p-6 border border-line/30 shadow-xs space-y-4">
-              <h2 className="text-sm font-semibold text-ink uppercase tracking-wider">
-                Intervention Approval
+              <h2 className="text-sm font-semibold text-ink">
+                Intervention approval
               </h2>
 
               <p className="text-xs text-ink-muted leading-relaxed">
@@ -673,7 +676,7 @@ export function AlertDetailView({
                       {check.rule.replace(/_/g, ' ')}
                     </span>
                     <span
-                      className={`text-[10px] uppercase font-semibold ${
+                      className={`text-[10px] font-semibold ${
                         check.pass ? 'text-ok' : 'text-warning'
                       }`}
                     >
@@ -714,8 +717,8 @@ export function AlertDetailView({
 
                 {/* Certifications with Expiration status */}
                 <div className="space-y-1 pt-1">
-                  <span className="text-[10px] text-ink-muted uppercase font-semibold block">
-                    Certifications Status (Ref: 2026-10-18)
+                  <span className="text-[10px] text-ink-muted font-semibold block">
+                    Certification status (ref: 2026-10-18)
                   </span>
                   <div className="flex flex-wrap gap-1.5">
                     {activeTechCerts.map((c) => {
@@ -746,8 +749,8 @@ export function AlertDetailView({
             {/* Shadow Technician (Skill development) */}
             {shadowTech && (
               <div className="p-3 rounded-btn bg-surface-2/30 border border-line/20 text-xs space-y-0.5">
-                <span className="text-[10px] font-semibold text-ink-muted uppercase block">
-                  Shadow Trainee (Skill Development)
+                <span className="text-[10px] font-semibold text-ink-muted block">
+                  Shadow trainee (skill development)
                 </span>
                 <p className="text-ink font-medium">
                   {shadowTech.name} <span className="font-mono text-ink-muted">({shadowTech.id})</span> · Shift {shadowTech.shift}
@@ -758,8 +761,8 @@ export function AlertDetailView({
             {/* Override Technician Picker (Guardrail Override) */}
             {isPending && (
               <div className="pt-2 border-t border-line/20 space-y-2">
-                <label className="text-[11px] font-semibold text-ink-muted uppercase block">
-                  Re-assign / Override Qualified Technician
+                <label className="text-[11px] font-semibold text-ink-muted block">
+                  Re-assign / override qualified technician
                 </label>
                 <select
                   value={selectedTechOverride}

@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { Alert, Machine, Plant } from '@/lib/types';
+import { formatFailureMode } from '@/lib/lifecycle';
 import { usePlantContext } from './PlantContext';
 import {
   AlertTriangle,
@@ -360,7 +361,7 @@ export function AlertsListView({
                 {/* Reason & Action Summary */}
                 <div className="text-xs text-ink space-y-1">
                   <p className="font-medium text-ink">
-                    Failure mode: <span className="capitalize">{alert.failure_mode.replace('_', ' ')}</span> · Action: <span className="capitalize font-semibold">{alert.action_type}</span>
+                    Failure mode: <span>{formatFailureMode(alert.failure_mode)}</span> · Action: <span className="capitalize font-semibold">{alert.action_type}</span>
                   </p>
                   <p className="text-ink-muted leading-relaxed line-clamp-2">
                     {alert.reasoning}

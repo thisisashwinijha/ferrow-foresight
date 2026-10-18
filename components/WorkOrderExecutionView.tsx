@@ -136,6 +136,7 @@ export function WorkOrderExecutionView({
       } else {
         setWorkOrder(data.workOrder);
         showToast(data.message || 'Checklist updated', 'info');
+        router.refresh();
       }
     } catch {
       showToast('Error communicating with server', 'warning');
@@ -175,6 +176,7 @@ export function WorkOrderExecutionView({
       } else {
         setWorkOrder(data.workOrder);
         showToast(`Work order ${workOrder.id} successfully closed and resolved.`, 'info');
+        router.refresh();
       }
     } catch {
       showToast('Error closing work order', 'warning');
@@ -238,10 +240,15 @@ export function WorkOrderExecutionView({
               </span>
 
               {/* LOTO Permit pill */}
-              {workOrder.loto_permit_no && (
+              {workOrder.loto_permit_no ? (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-chip text-xs font-mono font-medium bg-ok/10 text-ok border border-ok/20">
                   <ShieldCheck className="w-3.5 h-3.5" />
                   {workOrder.loto_permit_no}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-chip text-xs font-medium bg-surface-2 text-ink-muted border border-line/20">
+                  <Shield className="w-3.5 h-3.5 opacity-60" />
+                  LOTO pending
                 </span>
               )}
             </div>

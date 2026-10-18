@@ -16,7 +16,7 @@ import {
 import { Line, Machine, Alert, WorkOrder } from '@/lib/types';
 import { MachineTile } from './MachineTile';
 import { usePlantContext } from './PlantContext';
-import { getDerivedMachineTileState } from '@/lib/lifecycle';
+import { getDerivedMachineTileState, formatFailureMode } from '@/lib/lifecycle';
 
 interface LineMimicProps {
   lines: Line[];
@@ -239,7 +239,7 @@ export function LineMimic({ lines, machines, alerts, workOrders = [] }: LineMimi
                       </span>
                       <span className="truncate capitalize">
                         {primaryIssue.derived.state === 'alert'
-                          ? primaryIssue.alert?.failure_mode?.replace(/_/g, ' ') || primaryIssue.derived.detailLabel
+                          ? formatFailureMode(primaryIssue.alert?.failure_mode) || primaryIssue.derived.detailLabel
                           : primaryIssue.derived.state === 'in_progress'
                           ? `Maintenance in progress (${primaryIssue.derived.detailLabel})`
                           : primaryIssue.machine.status === 'offline'

@@ -18,6 +18,7 @@ import {
 } from '@/lib/types';
 import { useMachineTelemetry } from '@/lib/simulator';
 import { getVibrationSeverity, getTemperatureSeverity } from '@/lib/risk';
+import { formatFailureMode } from '@/lib/lifecycle';
 import {
   Activity,
   AlertTriangle,
@@ -253,7 +254,7 @@ export function MachineHistoryCard({
           {/* Health & Risk Badges */}
           <div className="flex items-center gap-3 shrink-0">
             <div className="px-4 py-2 rounded-card bg-surface-2/60 border border-line/20 text-center min-w-[100px]">
-              <span className="text-[11px] text-ink-muted block uppercase tracking-wider font-medium">
+              <span className="text-[11px] text-ink-muted block font-medium">
                 Health
               </span>
               <span
@@ -266,7 +267,7 @@ export function MachineHistoryCard({
             </div>
 
             <div className="px-4 py-2 rounded-card bg-surface-2/60 border border-line/20 text-center min-w-[100px]">
-              <span className="text-[11px] text-ink-muted block uppercase tracking-wider font-medium">
+              <span className="text-[11px] text-ink-muted block font-medium">
                 Risk score
               </span>
               <span
@@ -291,8 +292,8 @@ export function MachineHistoryCard({
           </div>
           <div className="space-y-0.5">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-agent uppercase tracking-wide">
-                Agent Summary
+              <span className="text-xs font-semibold text-agent">
+                Agent summary
               </span>
               <span className="text-[10px] text-ink-muted">· Live automated synthesis</span>
             </div>
@@ -648,7 +649,7 @@ export function MachineHistoryCard({
             <div className="space-y-6">
               {/* Active Alerts */}
               <div>
-                <h3 className="text-xs font-semibold text-ink uppercase tracking-wider mb-3">
+                <h3 className="text-xs font-semibold text-ink mb-3">
                   Alerts ({alerts.length})
                 </h3>
                 {alerts.length === 0 ? (
@@ -667,19 +668,19 @@ export function MachineHistoryCard({
                             <span
                               className={`px-2 py-0.5 rounded-chip text-xs font-semibold ${
                                 alert.urgency === 'P1'
-                                  ? 'bg-danger/10 text-danger'
-                                  : alert.urgency === 'P2'
-                                  ? 'bg-warning/10 text-warning'
-                                  : 'bg-surface-2 text-ink-muted'
+                                   ? 'bg-danger/10 text-danger'
+                                   : alert.urgency === 'P2'
+                                   ? 'bg-warning/10 text-warning'
+                                   : 'bg-surface-2 text-ink-muted'
                               }`}
                             >
                               {alert.urgency}
                             </span>
-                            <span className="font-medium text-ink">{alert.failure_mode}</span>
+                            <span className="font-medium text-ink">{formatFailureMode(alert.failure_mode)}</span>
                             <span className="text-ink-muted">· Action: {alert.action_type}</span>
                           </div>
                           <span
-                            className={`px-2 py-0.5 rounded-chip text-xs font-medium ${
+                            className={`px-2 py-0.5 rounded-chip text-xs font-medium capitalize ${
                               alert.status === 'approved'
                                 ? 'bg-ok/10 text-ok'
                                 : alert.status === 'rejected'
@@ -687,7 +688,7 @@ export function MachineHistoryCard({
                                 : 'bg-warning/10 text-warning'
                             }`}
                           >
-                            {alert.status}
+                            {alert.status.replace('_', ' ')}
                           </span>
                         </div>
                         <p className="text-xs text-ink-muted mt-1 truncate">
@@ -701,8 +702,8 @@ export function MachineHistoryCard({
 
               {/* Work Orders */}
               <div>
-                <h3 className="text-xs font-semibold text-ink uppercase tracking-wider mb-3">
-                  Work Orders ({workOrders.length})
+                <h3 className="text-xs font-semibold text-ink mb-3">
+                  Work orders ({workOrders.length})
                 </h3>
                 {workOrders.length === 0 ? (
                   <p className="text-xs text-ink-muted py-3">No work orders linked to this machine.</p>
@@ -719,15 +720,19 @@ export function MachineHistoryCard({
                             {wo.type}
                           </span>
                           <span className="text-ink-muted">Alert: {wo.alert_id}</span>
-                          {wo.loto_permit_no && (
-                            <span className="px-1.5 py-0.5 rounded-chip text-[11px] bg-danger/10 text-danger font-mono">
+                          {wo.loto_permit_no ? (
+                            <span className="px-1.5 py-0.5 rounded-chip text-[11px] bg-ok/10 text-ok font-mono">
                               {wo.loto_permit_no}
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.5 rounded-chip text-[11px] bg-surface-2 text-ink-muted">
+                              LOTO pending
                             </span>
                           )}
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="text-ink-muted">Status:</span>
-                          <span className="font-medium text-ink uppercase text-[11px]">{wo.status}</span>
+                          <span className="font-medium text-ink capitalize text-[11px]">{wo.status.replace('_', ' ')}</span>
                         </div>
                       </div>
                     ))}
@@ -745,7 +750,7 @@ export function MachineHistoryCard({
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left">
-                    <thead className="text-[11px] text-ink-muted uppercase border-b border-line/30">
+                    <thead className="text-[11px] text-ink-muted border-b border-line/30">
                       <tr>
                         <th className="pb-2 font-medium">Part ID / No</th>
                         <th className="pb-2 font-medium">Description</th>

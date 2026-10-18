@@ -13,19 +13,88 @@ import { LineMimic } from './LineMimic';
 import { LiveAlertFeed } from './LiveAlertFeed';
 import { AttentionSection } from './AttentionSection';
 import { AlertDetailSheet } from './AlertDetailSheet';
-import { Alert } from '@/lib/types';
+import { Alert, Machine, Plant, Line, WorkOrder, KpiSnapshot } from '@/lib/types';
 
-export function ControlRoomView() {
+interface ControlRoomViewProps {
+  initialPlant?: Plant | null;
+  initialLines?: Line[];
+  initialMachines?: Machine[];
+  initialAlerts?: Alert[];
+  initialWorkOrders?: WorkOrder[];
+  initialCurrentKpi?: KpiSnapshot | null;
+  initialPreviousKpi?: KpiSnapshot | null;
+}
+
+export function ControlRoomView({
+  initialPlant,
+  initialLines,
+  initialMachines,
+  initialAlerts,
+  initialWorkOrders,
+  initialCurrentKpi,
+  initialPreviousKpi,
+}: ControlRoomViewProps = {}) {
   const { plantId, lineId, setLineId } = usePlantContext();
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
 
-  const plant = useMemo(() => getPlantByIdSync(plantId), [plantId]);
-  const lines = useMemo(() => getLinesSync(plantId), [plantId]);
-  const machines = useMemo(() => getMachinesSync(plantId, lineId), [plantId, lineId]);
-  const alerts = useMemo(() => getAlertsSync(plantId, lineId), [plantId, lineId]);
-  const workOrders = useMemo(() => getWorkOrdersSync(plantId, lineId), [plantId, lineId]);
-  const currentKpi = useMemo(() => getLatestKpiSnapshotSync(plantId), [plantId]);
-  const previousKpi = useMemo(() => getPreviousKpiSnapshotSync(plantId), [plantId]);
+  const plant = useMemo(() => {
+    if (initialPlant && initialPlant.id === plantId) return initialPlant;
+    return getPlantByIdSync(plantId);
+  }, [plantId, initialPlant]);
+
+  const lines = useMemo(() => {
+    if (initialLines && initialLines.length > 0 && (!plantId || plantId === initialPlant?.id)) return initialLines;
+    return getLinesSync(plantId);
+  }, [plantId, initialLines, initialPlant]);
+
+  const machines = useMemo(() => {
+    let list = initialMachines || getMachinesSync(plantId, lineId);
+    if (plantId && plantId !== 'all') {
+      list = list.filter((m) => m.plant_id === plantId);
+    }
+    if (lineId && lineId !== 'all') {
+      list = list.filter((m) => m.line_id === lineId);
+    }
+    return list;
+  }, [plantId, lineId, initialMachines]);
+
+  const alerts = useMemo(() => {
+    let list = initialAlerts || getAlertsSync(plantId, lineId);
+    if (plantId && plantId !== 'all') {
+      list = list.filter((a) => (a.plant_id || 'P-07') === plantId);
+    }
+    if (lineId && lineId !== 'all') {
+      list = list.filter((a) => {
+        const m = machines.find((mach) => mach.id === a.machine_id);
+        return m?.line_id === lineId || a.proposed_window?.line_id === lineId;
+      });
+    }
+    return list;
+  }, [plantId, lineId, initialAlerts, machines]);
+
+  const workOrders = useMemo(() => {
+    let list = initialWorkOrders || getWorkOrdersSync(plantId, lineId);
+    if (plantId && plantId !== 'all') {
+      list = list.filter((w) => w.plant_id === plantId);
+    }
+    if (lineId && lineId !== 'all') {
+      list = list.filter((w) => {
+        const m = machines.find((mach) => mach.id === w.machine_id);
+        return m?.line_id === lineId || w.scheduled_window?.line_id === lineId;
+      });
+    }
+    return list;
+  }, [plantId, lineId, initialWorkOrders, machines]);
+
+  const currentKpi = useMemo(() => {
+    if (initialCurrentKpi && (!plantId || plantId === initialPlant?.id)) return initialCurrentKpi;
+    return getLatestKpiSnapshotSync(plantId);
+  }, [plantId, initialCurrentKpi, initialPlant]);
+
+  const previousKpi = useMemo(() => {
+    if (initialPreviousKpi && (!plantId || plantId === initialPlant?.id)) return initialPreviousKpi;
+    return getPreviousKpiSnapshotSync(plantId);
+  }, [plantId, initialPreviousKpi, initialPlant]);
 
   // Filter lines to display in mimic based on active filter
   const displayedLines = useMemo(() => {

@@ -8,15 +8,18 @@ import { getPlantById } from '@/lib/data/plants';
 import { getLineById } from '@/lib/data/lines';
 import { getTechnicians } from '@/lib/data/technicians';
 import { getSpares } from '@/lib/data/spares';
+import { unstable_noStore as noStore } from 'next/cache';
 import { WorkOrderExecutionView } from '@/components/WorkOrderExecutionView';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function WorkOrderDetailPage({
   params,
 }: {
   params: { id: string };
 }) {
+  noStore();
   const workOrder = await getWorkOrderById(params.id);
 
   if (!workOrder) {

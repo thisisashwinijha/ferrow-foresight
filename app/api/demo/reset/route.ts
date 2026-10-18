@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { resetLocalStoreData } from '@/lib/data/localStore';
 import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
 import seedData from '@/data/seed_data.json';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function POST() {
   try {
@@ -36,6 +38,13 @@ export async function POST() {
       } catch (e) {
         console.warn('Could not reset Supabase state during demo reset:', e);
       }
+    }
+
+    // Refresh all views immediately
+    try {
+      revalidatePath('/', 'layout');
+    } catch (e) {
+      console.warn('revalidatePath warning in reset route:', e);
     }
 
     return NextResponse.json({

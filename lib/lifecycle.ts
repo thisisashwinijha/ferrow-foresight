@@ -52,6 +52,19 @@ export function getBaselineHealthScore(criticality: MachineCriticality): number 
 }
 
 /**
+ * Formats a failure mode string into clean, human-readable sentence case.
+ * e.g. "electrical_fault" -> "Electrical fault"
+ *      "bearing_wear" -> "Bearing wear"
+ *      "BEARING WEAR" -> "Bearing wear"
+ */
+export function formatFailureMode(mode?: string | null): string {
+  if (!mode) return '';
+  const clean = mode.replace(/_/g, ' ').trim();
+  if (!clean) return '';
+  return clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
+}
+
+/**
  * Shared Lifecycle Derivation function:
  * Derives machine tile state in one authoritative place:
  * open alert (urgency colour) > work order in_progress or loto_applied (wrench, "In progress") > work order scheduled/approved (neutral tile with calendar icon and "WO-id · date, shift") > normal.
@@ -81,7 +94,7 @@ export function getDerivedMachineTileState(
       urgency: openAlert.urgency,
       alertId: openAlert.id,
       badgeLabel: openAlert.urgency || 'Alert',
-      detailLabel: openAlert.failure_mode || 'Needs attention',
+      detailLabel: formatFailureMode(openAlert.failure_mode) || 'Needs attention',
       iconType: 'alert',
       isAbnormal: true,
       colorClasses: {
@@ -187,7 +200,7 @@ export function getRecentActivityEvents(
       id: `evt-raise-${alert.id}`,
       timestamp: alert.created_at,
       type: 'alert_raised',
-      title: `Alert raised: ${alert.failure_mode}`,
+      title: `Alert raised: ${formatFailureMode(alert.failure_mode)}`,
       description: `${alert.id} (${alert.urgency}) trigger: ${alert.trigger}`,
       machineId: alert.machine_id,
       alertId: alert.id,

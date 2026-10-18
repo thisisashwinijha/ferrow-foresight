@@ -25,6 +25,11 @@ export function getSupabaseBrowserClient(): SupabaseClient | null {
         detectSessionInUrl: false,
       },
       global: {
+        fetch: (url, options = {}) =>
+          fetch(url, {
+            ...options,
+            cache: 'no-store',
+          }),
         headers: {
           apikey: supabaseAnonKey,
         },

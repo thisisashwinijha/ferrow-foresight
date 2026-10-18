@@ -95,7 +95,7 @@ export function MachineSearch({ machines, isOpen, onClose }: MachineSearchProps)
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono text-ink-muted uppercase">{m.line_id}</span>
+                  <span className="text-[10px] font-mono text-ink-muted">{m.line_id}</span>
                   <span
                     className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold ${
                       m.criticality === 'A'
