@@ -35,6 +35,7 @@ export interface AgentCardInfo {
   last_run: string;
   avg_latency_ms: number;
   total_runs: number;
+  model?: string;
 }
 
 export interface AgentRunLogItem {
@@ -234,9 +235,13 @@ export function AgentConsoleView({
                         {agent.prompt_version}
                       </div>
                     </div>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      Active
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                      agent.total_runs > 0
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                        : 'bg-slate-800 text-slate-400 border border-slate-700/50'
+                    }`}>
+                      {agent.total_runs > 0 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
+                      {agent.total_runs > 0 ? 'Active' : 'No runs yet'}
                     </span>
                   </div>
 
@@ -248,19 +253,33 @@ export function AgentConsoleView({
                 <div className="space-y-2 pt-3 border-t border-slate-800/80 text-xs">
                   <div className="flex justify-between text-slate-400">
                     <span>Provider:</span>
-                    <span className="font-medium text-slate-200">{agent.provider}</span>
+                    <span className="font-medium text-slate-200">
+                      {agent.total_runs === 0 ? 'No runs yet' : agent.provider}
+                    </span>
                   </div>
+                  {agent.model && agent.model !== 'No runs yet' && (
+                    <div className="flex justify-between text-slate-400">
+                      <span>Model:</span>
+                      <span className="font-mono text-slate-200">{agent.model}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-slate-400">
                     <span>Average latency:</span>
-                    <span className="font-mono text-slate-200">{agent.avg_latency_ms} ms</span>
+                    <span className="font-mono text-slate-200">
+                      {agent.total_runs === 0 ? 'No runs yet' : `${agent.avg_latency_ms} ms`}
+                    </span>
                   </div>
                   <div className="flex justify-between text-slate-400">
                     <span>Last run:</span>
-                    <span className="text-slate-300">{agent.last_run}</span>
+                    <span className="text-slate-300">
+                      {agent.total_runs === 0 ? 'No runs yet' : agent.last_run}
+                    </span>
                   </div>
                   <div className="flex justify-between text-slate-400">
-                    <span>Lifetime executions:</span>
-                    <span className="font-mono text-slate-200">{agent.total_runs}</span>
+                    <span>Total executions:</span>
+                    <span className="font-mono text-slate-200">
+                      {agent.total_runs === 0 ? 'No runs yet' : agent.total_runs}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -326,7 +345,7 @@ export function AgentConsoleView({
                 {filteredLogs.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-8 text-center text-slate-500 italic">
-                      No agent run logs match your filter criteria.
+                      {runLogs.length === 0 ? 'No runs yet' : 'No agent run logs match your filter criteria.'}
                     </td>
                   </tr>
                 ) : (

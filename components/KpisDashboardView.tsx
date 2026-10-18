@@ -227,39 +227,47 @@ export function KpisDashboardView({
     });
   }, [plants, allSnapshots, allAlerts]);
 
-  // Baseline vs Target figures (P-07)
-  const pilotBaselineVsTargets = [
-    {
-      metric: 'Unplanned downtime',
-      baseline: '2.8 hours / month',
-      target: '-20% to -30% reduction (< 2.0 h/mo)',
-      rationale: 'Early vibration detection pulls repairs into changeovers before sudden stoppage.',
-      targetStatus: 'Pilot target benchmark',
-    },
-    {
-      metric: 'Wasted PM visits',
-      baseline: '68.4% of PM visits',
-      target: '-30% reduction (< 48.0%)',
-      rationale: 'PM Optimiser defers safe tasks and aligns overdue tasks to scheduled line windows.',
-      targetStatus: 'Pilot target benchmark',
-    },
-    {
-      metric: 'Alert precision',
-      baseline: 'Historical: ~70%',
-      target: '>= 85.0% precision (<= 15% false alarms)',
-      currentTracking: `${falseAlarmStats.precisionPct}% (Live: ${falseAlarmStats.ratePct}% false alarm rate)`,
-      rationale: 'Multi-evidence fusion (sensor telemetry + technician observations + history).',
-      targetStatus: 'Pilot target benchmark',
-    },
-    {
-      metric: 'Safety rule compliance',
-      baseline: 'Standard procedures',
-      target: 'Zero safety-rule violations (100% compliance)',
-      currentTracking: '0 violations (All LOTO & certification rules strictly enforced)',
-      rationale: 'Deterministic guardrails hard-block uncertified assignments and LOTO bypass.',
-      targetStatus: 'Pilot target benchmark',
-    },
-  ];
+  // Baseline vs Target figures (computed from data or labelled as target)
+  const pilotBaselineVsTargets = useMemo(() => {
+    const initialSnap = activePlantSnapshots[0];
+    const initialMonth = initialSnap ? formatMonthLabel(initialSnap.month) : 'Apr';
+    return [
+      {
+        metric: 'Unplanned downtime',
+        baseline: initialSnap
+          ? `${initialSnap.breakdown_hours.toFixed(1)} h/mo (${initialMonth} initial)`
+          : 'Target: < 2.0 h/mo',
+        target: '-20% to -30% reduction (< 2.0 h/mo)',
+        rationale: 'Early vibration detection pulls repairs into changeovers before sudden stoppage.',
+        targetStatus: 'Pilot target benchmark',
+      },
+      {
+        metric: 'Wasted PM visits',
+        baseline: initialSnap
+          ? `${initialSnap.wasted_pm_pct.toFixed(1)}% (${initialMonth} initial)`
+          : 'Target: < 48.0%',
+        target: '-30% reduction (< 48.0%)',
+        rationale: 'PM Optimiser defers safe tasks and aligns overdue tasks to scheduled line windows.',
+        targetStatus: 'Pilot target benchmark',
+      },
+      {
+        metric: 'Alert precision',
+        baseline: 'Target benchmark (>= 85.0%)',
+        target: '>= 85.0% precision (<= 15% false alarms)',
+        currentTracking: `${falseAlarmStats.precisionPct}% (Live: ${falseAlarmStats.ratePct}% false alarm rate)`,
+        rationale: 'Multi-evidence fusion (sensor telemetry + technician observations + history).',
+        targetStatus: 'Pilot target benchmark',
+      },
+      {
+        metric: 'Safety rule compliance',
+        baseline: 'Target benchmark (100%)',
+        target: 'Zero safety-rule violations (100% compliance)',
+        currentTracking: '0 violations (All LOTO & certification rules strictly enforced)',
+        rationale: 'Deterministic guardrails hard-block uncertified assignments and LOTO bypass.',
+        targetStatus: 'Pilot target benchmark',
+      },
+    ];
+  }, [activePlantSnapshots, falseAlarmStats]);
 
   return (
     <div className="space-y-8 pb-16">

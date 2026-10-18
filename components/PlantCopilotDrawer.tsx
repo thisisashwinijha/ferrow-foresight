@@ -212,7 +212,7 @@ export function PlantCopilotDrawer() {
                     {activeMachineId || activeWorkOrderId || activeAlertId || pathname}
                   </span>
                 </div>
-                <span className="text-[10px] text-slate-500">ISO 45001 Guardrails Active</span>
+                <span className="text-[10px] text-slate-500">Safety Guardrails Active</span>
               </div>
 
               {/* Message List */}

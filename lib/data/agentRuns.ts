@@ -7,7 +7,8 @@ export function getAgentRunsSync(limit = 100): AgentRunRecord[] {
 }
 
 export async function getAgentRuns(limit = 100): Promise<AgentRunRecord[]> {
-  return queryWithFallback<AgentRunRecord[]>(
+  const memoryRuns = getAgentRunsSync(limit);
+  const dbRuns = await queryWithFallback<AgentRunRecord[]>(
     async (client) => {
       const { data, error } = await client
         .from('agent_runs')
@@ -17,9 +18,28 @@ export async function getAgentRuns(limit = 100): Promise<AgentRunRecord[]> {
       if (error || !data) return { data: null, error };
       return { data: data as AgentRunRecord[], error: null };
     },
-    () => getAgentRunsSync(limit),
+    () => memoryRuns,
     'getAgentRuns'
   );
+
+  const seen = new Set<string>();
+  const combined: AgentRunRecord[] = [];
+
+  for (const r of [...memoryRuns, ...(dbRuns || [])]) {
+    const key = r.id || `${r.agent || ''}-${r.step || ''}-${r.created_at || ''}-${r.latency_ms || ''}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      combined.push(r);
+    }
+  }
+
+  combined.sort((a, b) => {
+    const tA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const tB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return tB - tA;
+  });
+
+  return combined.slice(0, limit);
 }
 
 export async function getAgentStatistics() {
@@ -51,7 +71,7 @@ export async function getAgentStatistics() {
       avgLatencyMs: 0,
       provider: 'No runs yet',
       model: 'No runs yet',
-      lastRun: null,
+      lastRun: 'No runs yet',
       lastRunDate: null,
     };
   }
@@ -71,7 +91,7 @@ export async function getAgentStatistics() {
   const runsByMappedId: Record<string, AgentRunRecord[]> = {};
 
   for (const r of runs) {
-    const mapped = mapStepToId[r.step] || r.step;
+    const mapped = mapStepToId[r.step] || mapStepToId[r.agent] || r.step || r.agent;
     if (!runsByMappedId[mapped]) {
       runsByMappedId[mapped] = [];
     }
