@@ -78,7 +78,9 @@ export function resetLocalStoreData(): void {
     try {
       const fullPath = path.resolve(process.cwd(), LOCAL_STATE_PATH);
       if (fs.existsSync(fullPath)) {
-        fs.unlinkSync(fullPath);
+        try {
+          fs.rmSync(fullPath, { force: true });
+        } catch {}
       }
     } catch (e) {
       console.warn('Could not remove data/local_state.json on reset:', e);

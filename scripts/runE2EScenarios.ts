@@ -16,8 +16,15 @@ const BROWSER_MAP: Record<string, BrowserType> = {
 };
 
 async function resetDemo() {
-  const res = await fetch(`${BASE_URL}/api/demo/reset`, { method: 'POST' });
-  if (!res.ok) throw new Error('Failed to reset demo');
+  try {
+    const res = await fetch(`${BASE_URL}/api/demo/reset`, { method: 'POST' });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      throw new Error(`HTTP ${res.status} ${res.statusText} - ${txt}`);
+    }
+  } catch (err: any) {
+    throw new Error(`Failed to reset demo: ${err.message}`);
+  }
 }
 
 async function runScenario1(page: any, vpName: string) {

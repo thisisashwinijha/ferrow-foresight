@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import '@fontsource/ibm-plex-sans/400.css';
 import '@fontsource/ibm-plex-sans/500.css';
 import '@fontsource/ibm-plex-sans/600.css';
@@ -13,11 +13,14 @@ import { getDatabaseState } from '@/lib/data/dbState';
 import { hasSupabaseKeys } from '@/lib/supabase';
 import { hasSupabaseAdminKeys } from '@/lib/supabaseAdmin';
 
+export const viewport: Viewport = {
+  themeColor: '#1E252B',
+};
+
 export const metadata: Metadata = {
   title: 'Ferrow Foresight | Maintenance Operating System',
   description: 'Condition-based and risk-based maintenance operating system for packaging and processing',
   manifest: '/manifest.json',
-  themeColor: '#1E252B',
   icons: {
     icon: [
       { url: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },
