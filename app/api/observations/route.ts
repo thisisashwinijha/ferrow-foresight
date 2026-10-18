@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { triageService } from '@/lib/triageService';
 import { formatFailureMode } from '@/lib/lifecycle';
+import { getClientIpFromHeaders } from '@/lib/agents';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -35,7 +36,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await triageService(parseResult.data);
+    const clientIp = getClientIpFromHeaders(request.headers);
+    const result = await triageService({
+      ...parseResult.data,
+      forceLive: true,
+      clientIp,
+    });
 
     // Refresh affected views
     try {

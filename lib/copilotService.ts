@@ -29,6 +29,7 @@ export interface CopilotContext {
   alert_id?: string;
   work_order_id?: string;
   user_role?: string;
+  clientIp?: string;
 }
 
 export interface CopilotResponse {
@@ -272,6 +273,7 @@ export async function copilotService(
     prompt_version: 'copilot-v1.0',
     context: fullContext,
     user_text: question,
+    clientIp: context.clientIp,
     ruleBasedFallback: () => computeRuleBasedCopilot(question, context),
   });
 

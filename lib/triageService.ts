@@ -18,6 +18,7 @@ export interface TriageInput {
   technician_id?: string;
   alert_id?: string;
   forceLive?: boolean;
+  clientIp?: string;
 }
 
 export interface TriageResult {
@@ -394,6 +395,7 @@ export async function triageService(input: TriageInput): Promise<TriageResult> {
     triage_context: triageContext,
     context: triageContext,
     user_text: input.note,
+    clientIp: input.clientIp,
     skipLive: Boolean(process.env.DEMO_MODE === 'true' && !input.forceLive),
     ruleBasedFallback: () => {
       const fallback = computeRuleBasedTriage(

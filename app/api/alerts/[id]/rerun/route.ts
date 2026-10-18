@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { getAlertByIdSync } from '@/lib/data/alerts';
 import { triageService } from '@/lib/triageService';
+import { getClientIpFromHeaders } from '@/lib/agents';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -47,11 +48,13 @@ export async function POST(
       );
     }
 
+    const clientIp = getClientIpFromHeaders(request.headers);
     const result = await triageService({
       machine_id: alert.machine_id,
       plant_id: alert.plant_id,
       alert_id: alert.id,
       forceLive: true,
+      clientIp,
     });
 
     try {

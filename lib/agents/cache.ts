@@ -15,6 +15,21 @@ const responseCache = new Map<string, CachedEntry>();
 // Per-IP rate limiting: IP -> timestamps[] of live calls in last hour
 const ipCallTimestamps = new Map<string, number[]>();
 
+export function getClientIpFromHeaders(headers: any): string {
+  if (!headers) return 'unknown';
+  let forwarded = '';
+  if (typeof headers.get === 'function') {
+    forwarded = headers.get('x-forwarded-for') || headers.get('x-real-ip') || '';
+  } else {
+    forwarded = headers['x-forwarded-for'] || headers['x-real-ip'] || '';
+  }
+  if (Array.isArray(forwarded)) forwarded = forwarded[0];
+  if (forwarded) {
+    return forwarded.split(',')[0].trim();
+  }
+  return 'unknown';
+}
+
 // Global daily cap tracking
 let dailyCallCount = 0;
 let currentDayKey = new Date().toISOString().slice(0, 10);

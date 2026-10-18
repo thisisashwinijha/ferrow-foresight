@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { pmOptimiserService } from '@/lib/pmOptimiserService';
+import { getClientIpFromHeaders } from '@/lib/agents';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -14,7 +15,8 @@ export async function POST(request: NextRequest) {
       // Body optional
     }
 
-    const result = await pmOptimiserService(plantId);
+    const clientIp = getClientIpFromHeaders(request.headers);
+    const result = await pmOptimiserService(plantId, clientIp);
     return NextResponse.json({ success: true, result });
   } catch (error: any) {
     return NextResponse.json(

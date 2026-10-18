@@ -211,7 +211,7 @@ export function computeRuleBasedPmOptimiser(plantId = 'P-07'): PmOptimiserResult
  * Service function for PM Optimiser.
  * Wires to live AI agent layer with fallback to deterministic logic.
  */
-export async function pmOptimiserService(plantId = 'P-07'): Promise<PmOptimiserResult> {
+export async function pmOptimiserService(plantId = 'P-07', clientIp?: string): Promise<PmOptimiserResult> {
   const pmTasks = getPmPlansSync(plantId);
   const machines = getMachinesSync(plantId);
   const alerts = getAlertsSync(plantId);
@@ -268,6 +268,7 @@ export async function pmOptimiserService(plantId = 'P-07'): Promise<PmOptimiserR
     trigger: 'user_request',
     prompt_version: 'pm-v1.0',
     context,
+    clientIp,
     ruleBasedFallback: () => computeRuleBasedPmOptimiser(plantId),
   });
 
