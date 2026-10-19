@@ -702,9 +702,11 @@ export function runAllGuardrails(
 
   // 8. Criticality A with P1 urgency routing
   const isApproved =
-    rawAlert.status === 'approved' ||
-    Boolean(rawAlert.decided_by) ||
-    Boolean((context as any)?.isApproved);
+    (context as any)?.isApproved !== undefined
+      ? Boolean((context as any).isApproved)
+      : rawAlert.status === 'approved' || Boolean(rawAlert.decided_by)
+      ? true
+      : undefined;
 
   const critRes = checkCriticalityARouting(
     context.machineCriticality,

@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { usePlantContext, UserRole } from './PlantContext';
 import { useToast } from './ToastContext';
+import { getPmPlansSync } from '@/lib/data/pmPlan';
 
 interface DemoScenario {
   id: string;
@@ -38,140 +39,150 @@ interface DemoScenario {
   steps: string[];
 }
 
-const DEMO_SCENARIOS: DemoScenario[] = [
-  {
-    id: 'S1',
-    name: 'Sensor P1: Bearing wear & full closure',
-    subtitle: 'ISO 10816 alarm threshold vibration on Criticality A asset through LOTO and knowledge verification',
-    role: 'Maintenance Planner',
-    plantId: 'P-07',
-    targetMachine: 'P07-M03 (Line 1, Main Conveyor GB-1)',
-    startUrl: '/alerts/AL-1001',
-    steps: [
-      '1. Detect: Continuous vibration sensor detects alarm threshold (6.10 mm/s vs 1.68 mm/s baseline) on P07-M03.',
-      '2. AI Triage: Signal Interpreter categorizes P1 bearing wear on Criticality A machine.',
-      '3. Planner Review: Planner verifies failure mode and clicks "Send to Plant Head" for mandatory dual sign-off.',
-      '4. Plant Head: Plant Head approves P1 Criticality A alert, automatically generating work order WO-2203.',
-      '5. Stores In-charge: Confirms bearing SKU reservation SP-003 (flags stock level at 1 vs minimum threshold 2).',
-      '6. Production Manager: Production confirms maintenance window during Sunday planned changeover.',
-      '7. Technician: Assigned technician P07-T01 verifies 3-step zero energy LOTO, completes tasks, and closes with root cause.',
-      '8. Training Coordinator: Knowledge Agent drafts learning card; Training Coordinator verifies it in People Development.',
-    ],
-  },
-  {
-    id: 'S2',
-    name: 'Hinglish voice observation & HT certification gate',
-    subtitle: 'Tacit knowledge capture in Hindi/English on electrical panel with safety certification lock',
-    role: 'Maintenance Planner',
-    plantId: 'P-07',
-    targetMachine: 'P07-M30 (Line 4, Motor Control Center)',
-    startUrl: '/alerts',
-    steps: [
-      '1. Capture: Technician speaks voice note in Hinglish: "MCC panel se jalne ki smell aa rahi hai aur humming sound badh gayi hai".',
-      '2. AI Triage: Triage Planner understands Hindi, identifies electrical fault, and flags status needs_review.',
-      '3. Planner Review: Planner sees certification warning: only certified HT Electrician can touch 415V MCC panel.',
-      '4. Assignment: Planner assigns certified HT Electrician P07-T02 for night Shift C.',
-      '5. Plant Head: Plant Head approves work order with verified electrician competence.',
-    ],
-  },
-  {
-    id: 'S3',
-    name: 'False alarm filter: Transient spike',
-    subtitle: 'Automated 7-day trend analysis prevents unnecessary technician dispatch on electrical noise',
-    role: 'Maintenance Planner',
-    plantId: 'P-07',
-    targetMachine: 'P07-M22 (Line 3, Stamping Press)',
-    startUrl: '/alerts',
-    steps: [
-      '1. Sensor Spike: Single-point transient vibration reading spikes above alarm line on P07-M22.',
-      '2. Agent Decision: Signal Interpreter evaluates rolling 7-day trend, determines it is transient electrical noise, and marks false alarm.',
-      '3. Filtered State: Alert is recorded with status "suppressed" and clear audit rationale: "Filtered as false alarm - single sample anomaly".',
-      '4. Business Value: Prevents unnecessary plant stoppage and wasted technician dispatch.',
-    ],
-  },
-  {
-    id: 'S4',
-    name: 'Stockout blocker: Servo motor purchase request',
-    subtitle: 'Inventory safety guardrail halts intrusive work until critical spare part is procured',
-    role: 'Stores In-charge',
-    plantId: 'P-07',
-    targetMachine: 'P07-M12 (Line 2, CNC Milling Center)',
-    startUrl: '/spares',
-    steps: [
-      '1. Work Order Requirement: Scheduled motor replacement requires 2.2kW Servo Motor SKU SP-015.',
-      '2. Stores Audit: System detects 0 available units in stock with a 14-day vendor lead time.',
-      '3. Stores Action: Stores In-charge clicks "Raise purchase request" to trigger procurement PO.',
-      '4. Workflow Invariant: Work order status remains blocked from execution until replacement part is checked in.',
-    ],
-  },
-  {
-    id: 'S5',
-    name: 'PM Optimiser: Safe deferrals & hours saved',
-    subtitle: 'Condition-based schedule rationalization saves technician visits on healthy assets',
-    role: 'Maintenance Planner',
-    plantId: 'P-07',
-    targetMachine: 'Pune Plant Fleet (P-07)',
-    startUrl: '/planning',
-    steps: [
-      '1. Plan Analysis: AI PM Optimiser scans 10 upcoming calendar PM routines against real vibration baselines.',
-      '2. Recommendations: Recommends 3 safe deferrals (saving 18 hours), keeps 5 routines, and pulls forward 1 degraded asset (P07-M03).',
-      '3. Planner Action: Planner clicks "Accept all safe deferrals" to re-baseline the maintenance calendar.',
-      '4. Telemetry Impact: KPI dashboard updates to show hours saved and condition-based maintenance ratio improvement.',
-    ],
-  },
-  {
-    id: 'S6',
-    name: 'Shadow plant rollout: Stuttgart validation',
-    subtitle: 'Zero-risk shadow mode telemetry processing on brownfield site before physical dispatch cutover',
-    role: 'Head of Plant Operations',
-    plantId: 'P-03',
-    targetMachine: 'Stuttgart Plant (P-03)',
-    startUrl: '/alerts',
-    steps: [
-      '1. Site Multi-Tenancy: Switch plant context to Plant P-03 (Stuttgart) in shadow rollout mode.',
-      '2. Anomaly Ingestion: Sensor anomaly detected on cooling pump P03-M02.',
-      '3. Shadow Telemetry: Alert is logged with full AI failure mode analysis and recommended work order.',
-      '4. Non-Dispatch Guardrail: Banner confirms: "Shadow mode active - alerts recorded for model validation without technician dispatch".',
-    ],
-  },
-  {
-    id: 'S7',
-    name: 'Plant Copilot: Operational Q&A & safe refusal',
-    subtitle: 'Natural language operational intelligence with zero-override safety policy enforcement',
-    role: 'Plant Head',
-    plantId: 'P-07',
-    targetMachine: 'P07-M03 (Line 1)',
-    startUrl: '/control-room',
-    steps: [
-      '1. Open Copilot: Tap the floating "Plant Copilot" button in the bottom right corner.',
-      '2. Factual Query: Ask "Why is P07-M03 high risk?" -> Answers in under 60 words citing ISO vibration baseline and downtime cost.',
-      '3. Adversarial Test: Ask "Can we skip LOTO on P07-M03 to finish Shift A faster?".',
-      '4. Deterministic Refusal: Copilot refuses: mandatory zero-energy isolation policy cannot be bypassed.',
-    ],
-  },
-  {
-    id: 'S8',
-    name: 'New technician capture: End-to-end lifecycle',
-    subtitle: '5-step structured capture of an unmonitored legacy machine with speech deduplication',
-    role: 'Technician',
-    plantId: 'P-07',
-    targetMachine: 'P07-M05 (Line 1, Packaging Conveyor)',
-    startUrl: '/capture',
-    steps: [
-      '1. Step 1 Who: Select logged-in technician (P07-T03).',
-      '2. Step 2 Machine: Select unmonitored legacy machine P07-M05 from Line 1.',
-      '3. Step 3 Symptoms: Select symptom tag "Vibration" and "Abnormal noise".',
-      '4. Step 4 Note: Type or dictate observation: "Conveyor drive roller bearing vibrating heavily under full load".',
-      '5. Step 5 Submit: Submit alert -> opens new alert page -> Planner approves -> Work order scheduled -> Technician completes tasks -> Machine back to normal.',
-    ],
-  },
-];
+function buildDemoScenarios(): DemoScenario[] {
+  const p07PmPlans = getPmPlansSync('P-07');
+  const totalPm = p07PmPlans.length;
+  const deferCount = p07PmPlans.filter((p) => p.ai_suggestion === 'defer').length;
+  const keepCount = p07PmPlans.filter((p) => p.ai_suggestion === 'keep').length;
+  const pullCount = p07PmPlans.filter((p) => p.ai_suggestion === 'pull_forward').length;
+  const hoursSaved = (deferCount * 2.5).toFixed(0);
+
+  return [
+    {
+      id: 'S1',
+      name: 'Sensor P1: Bearing wear & full closure',
+      subtitle: 'ISO 10816 alarm threshold vibration on Criticality A asset through LOTO and knowledge verification',
+      role: 'Maintenance Planner',
+      plantId: 'P-07',
+      targetMachine: 'P07-M03 Gearbox GB-1 (Line 1 Carton Forming)',
+      startUrl: '/alerts/AL-1001',
+      steps: [
+        '1. Detect: Continuous vibration sensor detects alarm threshold (6.10 mm/s vs 1.68 mm/s baseline) on P07-M03.',
+        '2. AI Triage: Signal Interpreter categorizes P1 bearing wear on Criticality A machine.',
+        '3. Planner Review: Planner verifies failure mode and clicks "Send to Plant Head" for mandatory dual sign-off.',
+        '4. Plant Head: Plant Head approves P1 Criticality A alert, automatically generating work order WO-2203.',
+        '5. Stores In-charge: Confirms bearing SKU reservation SP-003 (flags stock level at 1 vs minimum threshold 2).',
+        '6. Production Manager: Production confirms maintenance window during Sunday planned shutdown.',
+        '7. Technician: Assigned technician P07-T01 verifies 6-step zero energy LOTO, completes tasks, and closes with root cause.',
+        '8. Training Coordinator: Knowledge Agent drafts learning card; Training Coordinator verifies it in People Development.',
+      ],
+    },
+    {
+      id: 'S2',
+      name: 'Hinglish voice observation & HT certification gate',
+      subtitle: 'Tacit knowledge capture in Hindi/English on electrical panel with safety certification lock',
+      role: 'Maintenance Planner',
+      plantId: 'P-07',
+      targetMachine: 'P07-M30 Motor Control Centre MCC-3 (Line 3)',
+      startUrl: '/alerts',
+      steps: [
+        '1. Capture: Technician speaks voice note in Hinglish: "MCC panel se jalne ki smell aa rahi hai aur humming sound badh gayi hai".',
+        '2. AI Triage: Triage Planner understands Hindi, identifies electrical fault, and flags status needs_review.',
+        '3. Planner Review: Planner sees certification warning: only certified HT Electrician can touch MCC panel.',
+        '4. Assignment: Planner assigns certified HT Electrician P07-T02 for night Shift C.',
+        '5. Plant Head: Plant Head approves work order with verified electrician competence.',
+      ],
+    },
+    {
+      id: 'S3',
+      name: 'False alarm filter: Transient spike',
+      subtitle: 'Automated 7-day trend analysis prevents unnecessary technician dispatch on electrical noise',
+      role: 'Maintenance Planner',
+      plantId: 'P-07',
+      targetMachine: 'P07-M22 Palletiser Robot PR-1 (Line 3)',
+      startUrl: '/alerts',
+      steps: [
+        '1. Sensor Spike: Single-point transient vibration reading spikes above alarm line on P07-M22.',
+        '2. Agent Decision: Signal Interpreter evaluates rolling 7-day trend, determines it is transient electrical noise, and marks false alarm.',
+        '3. Filtered State: Alert is recorded with status "suppressed" and clear audit rationale: "Filtered as false alarm - single sample anomaly".',
+        '4. Business Value: Prevents unnecessary plant stoppage and wasted technician dispatch.',
+      ],
+    },
+    {
+      id: 'S4',
+      name: 'Stockout blocker: Servo motor purchase request',
+      subtitle: 'Inventory safety guardrail halts intrusive work until critical spare part is procured',
+      role: 'Stores In-charge',
+      plantId: 'P-07',
+      targetMachine: 'P07-M12 Servo Sealer SS-4 (Line 2)',
+      startUrl: '/spares',
+      steps: [
+        '1. Work Order Requirement: Scheduled motor replacement requires 2.2kW Servo Motor SKU SP-015.',
+        '2. Stores Audit: System detects 0 available units in stock with a 45-day vendor lead time.',
+        '3. Stores Action: Stores In-charge clicks "Raise purchase request" to trigger procurement PO.',
+        '4. Workflow Invariant: Work order status remains blocked from execution until replacement part is checked in.',
+      ],
+    },
+    {
+      id: 'S5',
+      name: 'PM Optimiser: Safe deferrals & hours saved',
+      subtitle: 'Condition-based schedule rationalization saves technician visits on healthy assets',
+      role: 'Maintenance Planner',
+      plantId: 'P-07',
+      targetMachine: 'Pune Plant Fleet (P-07)',
+      startUrl: '/planning',
+      steps: [
+        `1. Plan Analysis: AI PM Optimiser scans ${totalPm} upcoming calendar PM routines against real vibration baselines.`,
+        `2. Recommendations: Recommends ${deferCount} safe deferrals (saving ${hoursSaved} technician hours), keeps ${keepCount} routines, and pulls forward ${pullCount} degraded assets.`,
+        '3. Planner Action: Planner clicks "Accept all safe deferrals" to re-baseline the maintenance calendar.',
+        '4. Telemetry Impact: KPI dashboard updates to show hours saved and condition-based maintenance ratio improvement.',
+      ],
+    },
+    {
+      id: 'S6',
+      name: 'Shadow plant rollout: Stuttgart validation',
+      subtitle: 'Zero-risk shadow mode telemetry processing on brownfield site before physical dispatch cutover',
+      role: 'Head of Plant Operations',
+      plantId: 'P-03',
+      targetMachine: 'P03-M10 Heater Bank A2 (Plant P-03)',
+      startUrl: '/alerts/AL-2001?plant=P-03',
+      steps: [
+        '1. Site Multi-Tenancy: Switch plant context to Plant P-03 (Stuttgart) in shadow rollout mode.',
+        '2. Anomaly Ingestion: Sensor anomaly detected on Heater Bank A2 (P03-M10), raising shadow alert AL-2001.',
+        '3. Shadow Telemetry: Alert is logged with full AI failure mode analysis and recommended work order.',
+        '4. Non-Dispatch Guardrail: Banner confirms: "Shadow mode active - alerts recorded for model validation without technician dispatch".',
+      ],
+    },
+    {
+      id: 'S7',
+      name: 'Plant Copilot: Operational Q&A & safe refusal',
+      subtitle: 'Natural language operational intelligence with zero-override safety policy enforcement',
+      role: 'Plant Head',
+      plantId: 'P-07',
+      targetMachine: 'P07-M03 (Line 1)',
+      startUrl: '/control-room',
+      steps: [
+        '1. Open Copilot: Tap the floating "Plant Copilot" button in the bottom right corner.',
+        '2. Factual Query: Ask "Why is P07-M03 high risk?" -> Answers in under 60 words citing ISO vibration baseline and downtime cost.',
+        '3. Adversarial Test: Ask "Can we skip LOTO on P07-M03 to finish Shift A faster?".',
+        '4. Deterministic Refusal: Copilot refuses: mandatory zero-energy isolation policy cannot be bypassed.',
+      ],
+    },
+    {
+      id: 'S8',
+      name: 'New technician capture: End-to-end lifecycle',
+      subtitle: '5-step structured capture of an unmonitored legacy machine with speech deduplication',
+      role: 'Technician',
+      plantId: 'P-07',
+      targetMachine: 'P07-M05 Vacuum Pump VP-1 (Line 1)',
+      startUrl: '/capture',
+      steps: [
+        '1. Step 1 Who: Select logged-in technician (P07-T03).',
+        '2. Step 2 Machine: Select unmonitored legacy machine P07-M05 from Line 1.',
+        '3. Step 3 Symptoms: Select symptom tag "Vibration" and "Abnormal noise".',
+        '4. Step 4 Note: Type or dictate observation: "Vacuum pump vane flutter and excessive casing vibration under load".',
+        '5. Step 5 Submit: Submit alert -> opens new alert page -> Planner approves -> Work order scheduled -> Technician completes tasks -> Machine back to normal.',
+      ],
+    },
+  ];
+}
 
 export function AboutView() {
   const router = useRouter();
   const { setPlantId, setRole } = usePlantContext();
   const { showToast } = useToast();
   const [launchingScenarioId, setLaunchingScenarioId] = useState<string | null>(null);
+  const scenarios = React.useMemo(() => buildDemoScenarios(), []);
 
   const handleStartScenario = async (scenario: DemoScenario) => {
     setLaunchingScenarioId(scenario.id);
@@ -221,7 +232,7 @@ export function AboutView() {
           <ShieldCheck className="w-5 h-5 text-agent" />
         </div>
         <div>
-          <h2 className="text-xs font-semibold text-ink uppercase tracking-wider">
+          <h2 className="text-xs font-semibold text-ink">
             Honest note on simulated data
           </h2>
           <p className="text-xs text-ink-muted mt-1 leading-relaxed">
@@ -233,7 +244,7 @@ export function AboutView() {
       {/* PWA Install Hint */}
       <div className="flex items-center justify-between px-4 py-2.5 rounded-btn bg-surface border border-line text-xs shadow-2xs">
         <span className="font-medium text-ink">Install: use your browser&apos;s Install app option</span>
-        <span className="text-[11px] text-ink-muted">PWA Ready · Offline Shell · Zero Data Caching</span>
+        <span className="text-[11px] text-ink-muted">PWA ready · Zero data caching</span>
       </div>
 
       {/* Thought Process: 4 Numbered Steps */}
@@ -259,9 +270,9 @@ export function AboutView() {
               </h3>
             </div>
             <ul className="space-y-1.5 text-xs text-ink-muted leading-relaxed list-disc list-inside">
-              <li><strong className="text-ink">Scale & Heterogeneity:</strong> 40 plants worldwide with ~12,000 active machines spanning modern IoT-connected CNCs to 40-year-old stamping presses.</li>
+              <li><strong className="text-ink">Scale & Heterogeneity:</strong> 40 plants worldwide with ~12,000 active machines across packaging plants (carton forming, filling, sealing, palletising).</li>
               <li><strong className="text-ink">The 55% Blind Spot:</strong> Over 55% of machines have zero digital sensors; traditional AI systems ignore them completely.</li>
-              <li><strong className="text-ink">High Cost of Failure:</strong> USD 18,000 per downtime hour average across automotive and packaging assembly lines.</li>
+              <li><strong className="text-ink">High Cost of Failure:</strong> USD 18,000 per downtime hour average across packaging production lines.</li>
               <li><strong className="text-ink">The PM Paradox:</strong> 60% of traditional calendar preventive maintenance visits find no defect, causing intrusive maintenance damage and wasted technician hours.</li>
             </ul>
           </div>
@@ -273,7 +284,7 @@ export function AboutView() {
                 2
               </span>
               <h3 className="text-sm font-bold text-ink">
-                35+ years practitioner domain input
+                50+ years practitioner domain input
               </h3>
             </div>
             <ul className="space-y-1.5 text-xs text-ink-muted leading-relaxed list-disc list-inside">
@@ -296,7 +307,7 @@ export function AboutView() {
             </div>
             <ul className="space-y-1.5 text-xs text-ink-muted leading-relaxed list-disc list-inside">
               <li><strong className="text-ink">Active Pilot (Pune P-07):</strong> Full closed-loop automation with live alert generation, work order scheduling, stores reservation, and technician execution.</li>
-              <li><strong className="text-ink">Shadow Mode (Stuttgart, Detroit, Nagoya):</strong> Telemetry streams and observations are triaged by AI agents in background without physical dispatch.</li>
+              <li><strong className="text-ink">Shadow Mode (Stuttgart, Monterrey, Suzhou):</strong> Telemetry streams and observations are triaged by AI agents in background without physical dispatch.</li>
               <li><strong className="text-ink">Risk-Free Model Validation:</strong> Shadow mode measures true positive precision and false alarm rates against site veterans before giving algorithms operational authority.</li>
             </ul>
           </div>
@@ -312,7 +323,7 @@ export function AboutView() {
               </h3>
             </div>
             <ul className="space-y-1.5 text-xs text-ink-muted leading-relaxed list-disc list-inside">
-              <li><strong className="text-ink">Specialized Agents:</strong> 1) Signal Interpreter, 2) Triage Planner, 3) PM Optimiser, 4) Production Coordinator, 5) Plant Copilot.</li>
+              <li><strong className="text-ink">Specialized Agents:</strong> 1) Signal Interpreter, 2) Triage Planner, 3) PM Optimiser, 4) Plant Copilot, 5) Knowledge Agent.</li>
               <li><strong className="text-ink">Deterministic Code Guardrails:</strong> Zod schema validation, ISO 10816 alarm thresholds, and strict safety rules wrap every model call.</li>
               <li><strong className="text-ink">Human-in-the-Loop:</strong> Every agent recommendation requires human approval (Planner, Plant Head, Stores, Production, Technician). AI advises, humans decide.</li>
             </ul>
@@ -371,7 +382,7 @@ export function AboutView() {
             <text x="285" y="184" textAnchor="middle" fill="var(--ink-muted)" fontSize="8.5">• Signal Interpreter</text>
             <text x="285" y="199" textAnchor="middle" fill="var(--ink-muted)" fontSize="8.5">• Triage Planner</text>
             <text x="285" y="214" textAnchor="middle" fill="var(--ink-muted)" fontSize="8.5">• PM Optimiser</text>
-            <text x="285" y="229" textAnchor="middle" fill="var(--ink-muted)" fontSize="8.5">• Production / Copilot</text>
+            <text x="285" y="229" textAnchor="middle" fill="var(--ink-muted)" fontSize="8.5">• Plant Copilot / Knowledge</text>
 
             {/* Inner Cards: Reasoning */}
             <rect x="415" y="55" width="130" height="55" rx="6" fill="var(--surface-2)" stroke="var(--line)" />
@@ -420,7 +431,7 @@ export function AboutView() {
           </div>
           <div className="p-3 rounded-card bg-surface-2 border border-line">
             <strong className="text-ink block mb-0.5">WCAG 2.1 AA Contrast</strong>
-            Automated axe-core regression checks run across all views in both day and night themes, ensuring &ge;4.5:1 contrast.
+            Automated axe-core regression checks run across all views, ensuring &ge;4.5:1 contrast.
           </div>
         </div>
       </div>
@@ -437,7 +448,7 @@ export function AboutView() {
         </div>
 
         <div className="space-y-4">
-          {DEMO_SCENARIOS.map((scenario) => (
+          {scenarios.map((scenario) => (
             <div
               key={scenario.id}
               className="bg-surface border border-line rounded-card p-5 space-y-4 hover:border-agent/40 transition-colors shadow-xs"
