@@ -84,4 +84,23 @@ describe('KPI Dashboard & Performance Benchmarks', () => {
     expect(maxAllowedWastedPm).toBeLessThan(50);
     expect(targetPrecisionMin).toBe(85.0);
   });
+
+  it('Fix 9: computes baseline as Apr-Sep 2026 average and derives targets on matching basis', () => {
+    const p07Snaps = getKpiSnapshotsSync('P-07').filter(
+      (s) => s.month >= '2026-04' && s.month <= '2026-09'
+    );
+    expect(p07Snaps.length).toBe(6);
+
+    const avgBreakdown = p07Snaps.reduce((acc, s) => acc + s.breakdown_hours, 0) / p07Snaps.length;
+    const avgWastedPm = p07Snaps.reduce((acc, s) => acc + s.wasted_pm_pct, 0) / p07Snaps.length;
+
+    expect(avgBreakdown).toBeCloseTo(3.1, 1);
+    expect(avgWastedPm).toBeCloseTo(57.4, 1);
+
+    const targetBreakdown = avgBreakdown * 0.75;
+    const targetWastedPm = avgWastedPm * 0.70;
+
+    expect(targetBreakdown).toBeCloseTo(2.3, 1);
+    expect(targetWastedPm).toBeCloseTo(40.2, 1);
+  });
 });

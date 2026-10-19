@@ -227,41 +227,48 @@ export function KpisDashboardView({
     });
   }, [plants, allSnapshots, allAlerts]);
 
-  // Baseline vs Target figures (computed from data or labelled as target)
+  // Baseline vs Target figures (baseline = Apr to Sep 2026 average, target computed from that baseline with matching basis)
   const pilotBaselineVsTargets = useMemo(() => {
-    const initialSnap = activePlantSnapshots[0];
-    const initialMonth = initialSnap ? formatMonthLabel(initialSnap.month) : 'Apr';
+    const aprSepSnapshots = activePlantSnapshots.filter(
+      (s) => s.month >= '2026-04' && s.month <= '2026-09'
+    );
+    const snapList = aprSepSnapshots.length > 0 ? aprSepSnapshots : activePlantSnapshots;
+    const count = snapList.length || 1;
+
+    const avgBreakdown = snapList.reduce((acc, s) => acc + s.breakdown_hours, 0) / count;
+    const avgWastedPm = snapList.reduce((acc, s) => acc + s.wasted_pm_pct, 0) / count;
+
+    // Targets: -20% to -30% reduction for downtime (-25% midpoint), -30% reduction for wasted PM
+    const targetBreakdown = avgBreakdown * 0.75;
+    const targetWastedPm = avgWastedPm * 0.70;
+
     return [
       {
         metric: 'Unplanned downtime',
-        baseline: initialSnap
-          ? `${initialSnap.breakdown_hours.toFixed(1)} h/mo (${initialMonth} initial)`
-          : 'Target: < 2.0 h/mo',
-        target: '-20% to -30% reduction (< 2.0 h/mo)',
+        baseline: `${avgBreakdown.toFixed(1)} h/mo (Apr–Sep 2026 avg)`,
+        target: `< ${targetBreakdown.toFixed(1)} h/mo (-25% reduction)`,
         rationale: 'Early vibration detection pulls repairs into changeovers before sudden stoppage.',
         targetStatus: 'Pilot target benchmark',
       },
       {
         metric: 'Wasted PM visits',
-        baseline: initialSnap
-          ? `${initialSnap.wasted_pm_pct.toFixed(1)}% (${initialMonth} initial)`
-          : 'Target: < 48.0%',
-        target: '-30% reduction (< 48.0%)',
+        baseline: `${avgWastedPm.toFixed(1)}% (Apr–Sep 2026 avg)`,
+        target: `< ${targetWastedPm.toFixed(1)}% (-30% reduction)`,
         rationale: 'PM Optimiser defers safe tasks and aligns overdue tasks to scheduled line windows.',
         targetStatus: 'Pilot target benchmark',
       },
       {
         metric: 'Alert precision',
-        baseline: 'Target benchmark (>= 85.0%)',
-        target: '>= 85.0% precision (<= 15% false alarms)',
+        baseline: '≥ 85.0% target basis',
+        target: '≥ 85.0% precision (≤ 15.0% false alarms)',
         currentTracking: `${falseAlarmStats.precisionPct}% (Live: ${falseAlarmStats.ratePct}% false alarm rate)`,
         rationale: 'Multi-evidence fusion (sensor telemetry + technician observations + history).',
         targetStatus: 'Pilot target benchmark',
       },
       {
         metric: 'Safety rule compliance',
-        baseline: 'Target benchmark (100%)',
-        target: 'Zero safety-rule violations (100% compliance)',
+        baseline: '100% target basis',
+        target: '100% compliance (zero violations)',
         currentTracking: '0 violations (All LOTO & certification rules strictly enforced)',
         rationale: 'Deterministic guardrails hard-block uncertified assignments and LOTO bypass.',
         targetStatus: 'Pilot target benchmark',
