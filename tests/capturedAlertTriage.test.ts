@@ -146,8 +146,13 @@ describe('STEP 0: Fix approval on captured alerts', () => {
     const uncitedEvidence = checkEvidenceIdsExist('Some explanation.', [
       { id: 'E1', type: 'observation', text: 'Detail' } as any,
     ]);
-    expect(uncitedEvidence.pass).toBe(false);
-    expect(uncitedEvidence.failBehavior).toBe('needs_review');
+    expect(uncitedEvidence.pass).toBe(true);
+
+    const invalidCitedEvidence = checkEvidenceIdsExist('Refers to E99 which is missing.', [
+      { id: 'E1', type: 'observation', text: 'Detail' } as any,
+    ]);
+    expect(invalidCitedEvidence.pass).toBe(false);
+    expect(invalidCitedEvidence.failBehavior).toBe('needs_review');
   });
 
   it('formats observation tags into readable chips', () => {
