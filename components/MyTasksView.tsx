@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePlantContext } from './PlantContext';
 import { Alert, WorkOrder, Machine, Spares, Technician, Plant } from '@/lib/types';
+import { getWorkflowStage } from '@/lib/workflow';
 import {
   CheckCircle2,
   AlertTriangle,
@@ -101,24 +102,23 @@ export function MyTasksView({
 
   // 2. Maintenance Planner tasks
   if (role === 'Maintenance Planner') {
-    // Alerts needing planner review or escalation
+    // Alerts needing planner review (Stage 3)
     const reviewAlerts = initialAlerts.filter(
-      (a) =>
-        (a.status === 'pending' || a.status === 'needs_review') &&
-        a.decision_reason !== 'sent_to_plant_head'
+      (a) => getWorkflowStage(a) === 3
     );
 
     for (const alert of reviewAlerts) {
       const machine = machineMap.get(alert.machine_id);
-      const isCriticalA = (alert as any).criticality === 'A' || alert.machine_id === 'P07-M03';
+      const isCriticalA = (alert as any).criticality === 'A' || alert.machine_id === 'P07-M03' || alert.machine_id === 'P07-M01';
       const isP1CritA = alert.urgency === 'P1' && isCriticalA;
+      const stage = getWorkflowStage(alert);
 
       tasks.push({
         id: `task-${alert.id}`,
-        stage: isP1CritA ? 3 : 3,
+        stage,
         title: `${alert.id} · ${machine?.name || alert.machine_id}`,
         subtitle: isP1CritA
-          ? `High-risk anomaly on Criticality A asset. Review evidence to forward for Plant Head sign-off.`
+          ? `High-risk ${formatFailure(alert.failure_mode).toLowerCase()} anomaly on ${machine?.name || alert.machine_id}. Review evidence to forward for Plant Head sign-off.`
           : `Triaged: ${formatFailure(alert.failure_mode)}. Verify failure mode and assign technician.`,
         badge: {
           label: alert.urgency || 'P2',
@@ -163,23 +163,20 @@ export function MyTasksView({
   }
 
   // 3. Plant Head tasks
-  if (role === 'Plant Head') {
-    // Criticality A + P1 alerts needing authorization
+  if (role === 'Plant Head' || role === 'Head of Plant Operations') {
+    // Criticality A + P1 alerts needing authorization (Stage 4)
     const criticalApprovals = initialAlerts.filter(
-      (a) =>
-        (a.urgency === 'P1' || a.id === 'AL-1001') &&
-        (a.decision_reason === 'sent_to_plant_head' || a.status === 'pending' || a.status === 'needs_review') &&
-        a.status !== 'approved' &&
-        a.status !== 'resolved'
+      (a) => getWorkflowStage(a) === 4
     );
 
     for (const alert of criticalApprovals) {
       const machine = machineMap.get(alert.machine_id);
+      const stage = getWorkflowStage(alert);
       tasks.push({
         id: `task-ph-${alert.id}`,
-        stage: 4,
+        stage,
         title: `P1 Authorization · ${machine?.name || alert.machine_id}`,
-        subtitle: `Maintenance Planner forwarded high-risk bearing alert on Criticality A asset for authorization.`,
+        subtitle: `Maintenance Planner forwarded high-risk ${formatFailure(alert.failure_mode).toLowerCase()} alert on ${machine?.name || alert.machine_id} for authorization.`,
         badge: {
           label: 'Authorization Required',
           variant: 'alarm',

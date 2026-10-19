@@ -199,6 +199,51 @@ export function getWorkflowStage(
 }
 
 /**
+ * Checks whether an alert requires supervisor review.
+ * Single source of truth across lists, badges, and detail views.
+ * An alert needs review if status is needs_review, rejected, suppressed,
+ * if stored guardrails failed, or if it is an unapproved P1 Criticality A alert viewed prior to Plant Head approval.
+ */
+export function isAlertNeedsReview(alert: Alert | null | undefined, userRole?: string): boolean {
+  if (!alert) return false;
+  if (alert.status === 'approved' || alert.status === 'resolved') {
+    return false;
+  }
+  if (alert.status === 'needs_review' || alert.status === 'rejected' || alert.status === 'suppressed') {
+    return true;
+  }
+  if (alert.guardrail_result && alert.guardrail_result.pass === false) {
+    return true;
+  }
+
+  // Check Criticality A + P1 alert routing requirement
+  const isP1 = alert.urgency === 'P1';
+  const isCriticalA =
+    (alert as any).criticality === 'A' ||
+    (alert.machine_id && (alert.machine_id.endsWith('M03') || alert.machine_id.endsWith('M01')));
+
+  if (isP1 && isCriticalA) {
+    const isPlantHead = userRole === 'Plant Head' || userRole === 'Head of Plant Operations' || userRole === 'plant_head';
+    if (!isPlantHead) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Returns the effective display status for an alert.
+ */
+export function getEffectiveAlertStatus(alert: Alert | null | undefined, userRole?: string): string {
+  if (!alert) return 'pending';
+  if (alert.status === 'resolved') return 'resolved';
+  if (alert.status === 'approved') return 'approved';
+  if (isAlertNeedsReview(alert, userRole)) return 'needs_review';
+  return alert.status || 'pending';
+}
+
+/**
  * Returns human-readable label of who the current stage is waiting for.
  */
 export function getWaitingForRole(stage: WorkflowStage): string {

@@ -218,4 +218,31 @@ describe('Workflow Engine (lib/workflow.ts)', () => {
       expect(check.error).toContain('checklist');
     });
   });
+
+  describe('Single Source of Truth for Alert Review & Workflow Stage', () => {
+    it('returns Stage 3 for initial AL-1001 and AL-1002 until forwarded to Plant Head', () => {
+      const al1001: Partial<Alert> = {
+        id: 'AL-1001',
+        status: 'pending',
+        urgency: 'P1',
+        machine_id: 'P07-M03',
+        decision_reason: null,
+      };
+      const al1002: Partial<Alert> = {
+        id: 'AL-1002',
+        status: 'pending',
+        urgency: 'P1',
+        machine_id: 'P07-M01',
+        decision_reason: null,
+      };
+
+      expect(getWorkflowStage(al1001 as Alert)).toBe(3);
+      expect(getWorkflowStage(al1002 as Alert)).toBe(3);
+
+      // Transitions to Stage 4 once forwarded to Plant Head
+      const al1001Forwarded = { ...al1001, decision_reason: 'sent_to_plant_head' };
+      expect(getWorkflowStage(al1001Forwarded as Alert)).toBe(4);
+    });
+  });
 });
+

@@ -4,6 +4,12 @@ import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { Alert, Machine, Plant } from '@/lib/types';
 import { formatFailureMode } from '@/lib/lifecycle';
+import {
+  getWorkflowStage,
+  WORKFLOW_STAGES,
+  isAlertNeedsReview,
+  getEffectiveAlertStatus,
+} from '@/lib/workflow';
 import { usePlantContext } from './PlantContext';
 import {
   AlertTriangle,
@@ -29,7 +35,7 @@ export function AlertsListView({
   machines,
   plants,
 }: AlertsListViewProps) {
-  const { plantId, setPlantId } = usePlantContext();
+  const { plantId, setPlantId, role } = usePlantContext();
 
   const [urgencyFilter, setUrgencyFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -278,7 +284,10 @@ export function AlertsListView({
           {filteredAlerts.map((alert) => {
             const machine = machineMap.get(alert.machine_id);
             const plantObj = plantMap.get(alert.plant_id || machine?.plant_id || '');
-            const hasGuardrailFail = alert.guardrail_result && !alert.guardrail_result.pass;
+            const hasGuardrailFail = isAlertNeedsReview(alert, role);
+            const stage = getWorkflowStage(alert);
+            const stageInfo = WORKFLOW_STAGES[stage];
+            const effectiveStatus = getEffectiveAlertStatus(alert, role);
 
             return (
               <div
@@ -287,6 +296,11 @@ export function AlertsListView({
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5 flex-wrap">
+                    {/* Workflow Stage Badge */}
+                    <span className="px-2 py-0.5 rounded-chip text-[11px] font-medium bg-surface-2 text-ink border border-line/40">
+                      Stage {stage}: {stageInfo?.shortName || 'Review'}
+                    </span>
+
                     {/* Urgency Badge */}
                     <span
                       className={`px-2.5 py-0.5 rounded-chip text-xs font-semibold ${
@@ -333,19 +347,21 @@ export function AlertsListView({
                   <div className="flex items-center gap-3 shrink-0">
                     {/* Status Chip */}
                     <span
-                      className={`px-2.5 py-0.5 rounded-chip text-xs font-medium ${
-                        alert.status === 'approved'
+                      className={`px-2.5 py-0.5 rounded-chip text-xs font-medium capitalize ${
+                        effectiveStatus === 'approved'
                           ? 'bg-ok/10 text-ok'
-                          : alert.status === 'rejected'
+                          : effectiveStatus === 'resolved'
+                          ? 'bg-ok/15 text-ok font-semibold'
+                          : effectiveStatus === 'rejected'
                           ? 'bg-ink/10 text-ink-muted'
-                          : alert.status === 'needs_review'
+                          : effectiveStatus === 'needs_review'
                           ? 'bg-warning/10 text-warning font-semibold'
-                          : alert.status === 'suppressed'
+                          : effectiveStatus === 'suppressed'
                           ? 'bg-surface-2 text-ink-muted'
                           : 'bg-surface-2 text-ink font-medium'
                       }`}
                     >
-                      {alert.status.replace('_', ' ')}
+                      {effectiveStatus.replace('_', ' ')}
                     </span>
 
                     <Link

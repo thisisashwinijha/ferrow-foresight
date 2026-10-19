@@ -22,6 +22,7 @@ import {
 } from '@/lib/guardrails';
 import { formatFailureMode, formatObservationTag } from '@/lib/lifecycle';
 import { WorkflowFlowTracker } from './WorkflowFlowTracker';
+import { isAlertNeedsReview, getEffectiveAlertStatus } from '@/lib/workflow';
 import {
   getRequiredCertificationsForAlert,
   getQualifyingTechniciansForShift,
@@ -482,10 +483,11 @@ export function AlertDetailView({
                   alert.status === 'resolved' ||
                   (alert.status === 'approved' && createdWorkOrder?.status === 'closed');
                 const isEffectiveNeedsReview =
-                  !guardrailOutcome.pass &&
-                  alert.status !== 'approved' &&
-                  alert.status !== 'resolved' &&
-                  alert.status !== 'rejected';
+                  isAlertNeedsReview(alert, role) ||
+                  (!guardrailOutcome.pass &&
+                    alert.status !== 'approved' &&
+                    alert.status !== 'resolved' &&
+                    alert.status !== 'rejected');
                 const displayStatus = isAlertResolved
                   ? 'Resolved'
                   : isEffectiveNeedsReview
