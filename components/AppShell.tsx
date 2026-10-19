@@ -5,6 +5,7 @@ import { TopBar } from './TopBar';
 import { Sidebar } from './Sidebar';
 import { DatabaseBanner } from './DatabaseBanner';
 import { PlantCopilotDrawer } from './PlantCopilotDrawer';
+import { CaptionOverlay } from './CaptionOverlay';
 import { Plant, Machine } from '@/lib/types';
 
 interface AppShellProps {
@@ -44,6 +45,7 @@ export function AppShell({
         </main>
       </div>
       <PlantCopilotDrawer />
+      <CaptionOverlay />
     </div>
   );
 }

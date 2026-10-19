@@ -47,6 +47,23 @@ export async function getWorkOrders(plantId: string, lineId?: string): Promise<W
       if (error || !data) return { data: null, error };
 
       let list = data as WorkOrder[];
+      const localOrders = getWorkOrdersSync(plantId, lineId);
+      const localMap = new Map(localOrders.map((w) => [w.id, w]));
+      const merged: WorkOrder[] = [];
+      const seenIds = new Set<string>();
+      for (const wo of list) {
+        const local = localMap.get(wo.id);
+        merged.push(local ? { ...wo, ...local } : wo);
+        seenIds.add(wo.id);
+      }
+      for (const lo of localOrders) {
+        if (!seenIds.has(lo.id)) {
+          merged.unshift(lo);
+          seenIds.add(lo.id);
+        }
+      }
+      list = merged;
+
       if (lineId && lineId !== 'all') {
         list = list.filter((wo) => {
           const machine = getMachineByIdSync(wo.machine_id);
@@ -77,8 +94,12 @@ export async function getWorkOrderById(id: string, plantId?: string): Promise<Wo
         query = query.eq('plant_id', plantId);
       }
       const { data, error } = await query.limit(1);
+      const local = getWorkOrderByIdSync(id);
       if (error || !data || data.length === 0) {
-        return { data: null, error };
+        return { data: local ? normalizeAlertShadowTechnician(local) : null, error };
+      }
+      if (local) {
+        return { data: normalizeAlertShadowTechnician({ ...(data[0] as WorkOrder), ...local }), error: null };
       }
       return { data: normalizeAlertShadowTechnician(data[0] as WorkOrder), error: null };
     },

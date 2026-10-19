@@ -148,7 +148,7 @@ export function AlertDetailView({
   // Non-criticality technical guardrail checks
   const technicalGuardrailsPass = useMemo(() => {
     return guardrailOutcome.checks
-      .filter((c) => c.rule !== 'criticality_a_p1')
+      .filter((c) => c.rule !== 'criticality_a_p1' && c.rule !== 'spares_checked')
       .every((c) => c.pass);
   }, [guardrailOutcome.checks]);
 
@@ -230,7 +230,7 @@ export function AlertDetailView({
     setIsSavingCorrection(true);
     try {
       const targetTech = selectedTechOverride || null;
-      const willPass = guardrailOutcome.pass;
+      const willPass = technicalGuardrailsPass;
       const res = await fetch(`/api/alerts/${alert.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -303,9 +303,9 @@ export function AlertDetailView({
       showToast('P1 alerts on Criticality A assets require Plant Head approval.', 'warning');
       return;
     }
-    const checksToVerify = isP1CritA
-      ? guardrailOutcome.checks.filter((c) => c.rule !== 'criticality_a_p1')
-      : guardrailOutcome.checks;
+    const checksToVerify = guardrailOutcome.checks.filter(
+      (c) => c.rule !== 'criticality_a_p1' && c.rule !== 'spares_checked'
+    );
     const passes = checksToVerify.every((c) => c.pass);
 
     if (!passes) {
@@ -1011,9 +1011,9 @@ export function AlertDetailView({
                   <div className="space-y-2">
                     <button
                       onClick={handleApprove}
-                      disabled={isApproving || (!isPlanner && !isPlantHead) || !guardrailOutcome.pass}
+                      disabled={isApproving || (!isPlanner && !isPlantHead) || !technicalGuardrailsPass}
                       className={`w-full py-2.5 rounded-btn text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
-                        (!isPlanner && !isPlantHead) || !guardrailOutcome.pass
+                        (!isPlanner && !isPlantHead) || !technicalGuardrailsPass
                           ? 'bg-surface-2 text-ink-muted cursor-not-allowed opacity-60'
                           : 'bg-ink text-canvas hover:opacity-90 shadow-xs'
                       }`}
@@ -1022,7 +1022,7 @@ export function AlertDetailView({
                       <span>{isApproving ? 'Approving...' : 'Approve & Schedule Work Order'}</span>
                     </button>
 
-                    {((!isPlanner && !isPlantHead) || !guardrailOutcome.pass) && (
+                    {((!isPlanner && !isPlantHead) || !technicalGuardrailsPass) && (
                       <p className="text-[11px] text-warning font-medium leading-relaxed">
                         {!isPlanner && !isPlantHead
                           ? 'Only Maintenance Planner can approve P2/P3 alerts.'

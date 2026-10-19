@@ -51,6 +51,13 @@ export function PlantProvider({ children }: { children: React.ReactNode }) {
   const [lineId, setLocalLineId] = useState<string>('all');
   const [role, setLocalRole] = useState<UserRole>('Plant Head');
 
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('ferrow_role') as UserRole;
+      if (saved) setLocalRole(saved);
+    } catch {}
+  }, []);
+
   const handleSync = useCallback((newPlant: string, newLine: string) => {
     if (newPlant) setLocalPlantId(newPlant);
     if (newLine) setLocalLineId(newLine);
@@ -79,6 +86,9 @@ export function PlantProvider({ children }: { children: React.ReactNode }) {
 
   const setRole = (newRole: UserRole) => {
     setLocalRole(newRole);
+    try {
+      localStorage.setItem('ferrow_role', newRole);
+    } catch {}
     const dest = getRoleLandingUrl(newRole, plantId, lineId);
     router.push(dest);
   };

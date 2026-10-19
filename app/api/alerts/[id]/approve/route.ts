@@ -112,9 +112,12 @@ export async function POST(
       }
     );
 
-    if (!guardrailOutcome.pass) {
-      const failingReasons = guardrailOutcome.checks
-        .filter((c) => !c.pass)
+    const blockingChecks = guardrailOutcome.checks.filter(
+      (c) => !c.pass && c.rule !== 'spares_checked'
+    );
+
+    if (blockingChecks.length > 0) {
+      const failingReasons = blockingChecks
         .map((c) => c.detail)
         .join('; ');
       return NextResponse.json(

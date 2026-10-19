@@ -238,6 +238,7 @@ export function TopBar({
           {/* Role Switcher */}
           <div className="relative">
             <button
+              data-testid="role-switcher-button"
               onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
               className="flex items-center gap-1.5 px-2 py-1 rounded-btn hover:bg-surface-2 text-xs text-ink-muted hover:text-ink transition-colors"
             >
@@ -259,6 +260,7 @@ export function TopBar({
                   {ROLES.map((r) => (
                     <button
                       key={r}
+                      data-testid={`role-option-${r.toLowerCase().replace(/\s+/g, '-')}`}
                       onClick={() => {
                         setIsRoleDropdownOpen(false);
                         setRole(r);
@@ -297,8 +299,10 @@ export function TopBar({
 
           {/* Reset Demo Button */}
           <button
+            data-testid="reset-demo-button"
             onClick={handleResetDemo}
             title="Reset demo baseline"
+            aria-label="Reset demo baseline"
             className="p-1.5 rounded-btn hover:bg-surface-2 text-ink-muted hover:text-ink transition-colors"
           >
             <RotateCcw className="w-3.5 h-3.5" />
