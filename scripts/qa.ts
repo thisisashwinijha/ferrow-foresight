@@ -52,6 +52,17 @@ function stopDevServer() {
   } catch {}
 }
 
+function safeRemoveNextDir() {
+  const nextDir = path.join(process.cwd(), '.next');
+  try {
+    fs.rmSync(nextDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
+  } catch {
+    try {
+      execSync('rm -rf .next || true');
+    } catch {}
+  }
+}
+
 function runStep(name: string, command: string, env: Record<string, string> = {}): boolean {
   console.log(`\n▶ [QA] ${name}...`);
   console.log(`  $ ${command}`);
@@ -123,7 +134,8 @@ async function main() {
   // 4. Clean Production Build (Rule: stop dev server before build)
   stopDevServer();
   execSync('sleep 1');
-  execSync('rm -rf .next && rm -f data/local_state.json');
+  safeRemoveNextDir();
+  try { fs.unlinkSync(path.join(process.cwd(), 'data/local_state.json')); } catch {}
   const buildSuccess = runStep('Next.js Production Build', 'npm run build');
 
   if (!buildSuccess) {
@@ -166,7 +178,7 @@ async function main() {
 
   // USER RULE: "after the build, delete .next and restart the dev server"
   console.log('\n[QA Lifecycle] Cleaning .next and restarting background dev server on port 3000...');
-  execSync('rm -rf .next');
+  safeRemoveNextDir();
   execSync('nohup npm run dev </dev/null >/dev/null 2>&1 &');
   execSync('sleep 2');
   console.log('[QA Lifecycle] Background dev server restarted.');
