@@ -1,18 +1,21 @@
 import { getSeedData, queryWithFallback } from './db';
 import { WorkOrder } from '../types';
 import { getMachineByIdSync } from './machines';
+import { normalizeAlertShadowTechnician } from '../technicianAssignment';
 
 export function getWorkOrdersSync(plantId?: string, lineId?: string): WorkOrder[] {
   const data = getSeedData();
   const orders: WorkOrder[] = (data.work_orders as unknown as WorkOrder[]) || [];
-  return orders.filter((wo) => {
-    if (plantId && plantId !== 'all' && wo.plant_id !== plantId) return false;
-    if (lineId && lineId !== 'all') {
-      const machine = getMachineByIdSync(wo.machine_id);
-      if (machine?.line_id !== lineId) return false;
-    }
-    return true;
-  });
+  return orders
+    .filter((wo) => {
+      if (plantId && plantId !== 'all' && wo.plant_id !== plantId) return false;
+      if (lineId && lineId !== 'all') {
+        const machine = getMachineByIdSync(wo.machine_id);
+        if (machine?.line_id !== lineId) return false;
+      }
+      return true;
+    })
+    .map(normalizeAlertShadowTechnician);
 }
 
 export function getWorkOrderByIdSync(id: string): WorkOrder | undefined {
@@ -20,7 +23,7 @@ export function getWorkOrderByIdSync(id: string): WorkOrder | undefined {
   const data = getSeedData();
   const orders: WorkOrder[] = (data.work_orders as unknown as WorkOrder[]) || [];
   const cleanId = id.trim().toLowerCase();
-  return orders.find((wo) => {
+  const found = orders.find((wo) => {
     if (!wo || !wo.id) return false;
     const woClean = wo.id.trim().toLowerCase();
     return (
@@ -30,6 +33,7 @@ export function getWorkOrderByIdSync(id: string): WorkOrder | undefined {
       `wo-${woClean}` === cleanId
     );
   });
+  return found ? normalizeAlertShadowTechnician(found) : undefined;
 }
 
 export async function getWorkOrders(plantId: string, lineId?: string): Promise<WorkOrder[]> {
@@ -49,7 +53,7 @@ export async function getWorkOrders(plantId: string, lineId?: string): Promise<W
           return machine?.line_id === lineId;
         });
       }
-      return { data: list, error: null };
+      return { data: list.map(normalizeAlertShadowTechnician), error: null };
     },
     () => getWorkOrdersSync(plantId, lineId),
     'getWorkOrders'
@@ -76,7 +80,7 @@ export async function getWorkOrderById(id: string, plantId?: string): Promise<Wo
       if (error || !data || data.length === 0) {
         return { data: null, error };
       }
-      return { data: data[0] as WorkOrder, error: null };
+      return { data: normalizeAlertShadowTechnician(data[0] as WorkOrder), error: null };
     },
     () => getWorkOrderByIdSync(id),
     'getWorkOrderById'

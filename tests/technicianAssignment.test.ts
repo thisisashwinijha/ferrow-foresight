@@ -214,6 +214,28 @@ describe('Technician Assignment Logic (Hotfix 06C)', () => {
 
       expect(shadows).toEqual([]);
     });
+
+    it('enforces that AL-1001 loads with shift A shadow (Sneha P07-T08 or Kavya P07-T10), not Rahul (P07-T07)', async () => {
+      const { getAlertByIdSync, getAlertsSync } = await import('../lib/data/alerts');
+      const al1001 = getAlertByIdSync('AL-1001');
+      expect(al1001).toBeDefined();
+      expect(al1001?.assigned_technician).toBe('P07-T01'); // Ramesh (Shift A)
+      expect(al1001?.shadow_technician).not.toBe('P07-T07'); // Rahul is Shift B
+      expect(['P07-T08', 'P07-T10']).toContain(al1001?.shadow_technician);
+
+      const allAlerts = getAlertsSync('P-07');
+      for (const alert of allAlerts) {
+        if (alert.shadow_technician && alert.assigned_technician) {
+          const assigned = technicians.find((t) => t.id === alert.assigned_technician);
+          const shadow = technicians.find((t) => t.id === alert.shadow_technician);
+          expect(assigned).toBeDefined();
+          expect(shadow).toBeDefined();
+          expect(shadow?.shift).toBe(assigned?.shift);
+          const shadowRole = (shadow?.role || '').toLowerCase();
+          expect(shadowRole.includes('junior') || shadowRole.includes('trainee')).toBe(true);
+        }
+      }
+    });
   });
 
   describe('Guardrail Integration with Live Rules', () => {

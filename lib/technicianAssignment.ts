@@ -332,7 +332,77 @@ export function getEligibleShadowTechnicians(params: {
     if (plantId && plantId !== 'all' && t.plant_id !== plantId) return false;
     if (normalizeShiftId(t.shift) !== targetShift) return false;
     if (assignedTechnicianId && t.id === assignedTechnicianId) return false;
-    const roleLower = t.role.toLowerCase();
+    const roleLower = (t.role || '').toLowerCase();
     return roleLower.includes('junior') || roleLower.includes('trainee');
   });
+}
+
+/**
+ * Normalise shadow technician:
+ * Only a Junior or Trainee on the same shift as the assigned technician.
+ * If alert has an assigned technician and shadow technician is specified:
+ * - If current shadow technician is already an eligible Junior or Trainee on the assigned technician's shift, keep it.
+ * - Otherwise replace with an eligible Junior or Trainee on that shift (e.g. AL-1001: Ramesh Shift A -> Sneha Joshi P07-T08).
+ * - If no eligible shadow exists or assigned technician is already Junior/Trainee, set to null.
+ */
+export function normalizeAlertShadowTechnician<
+  T extends {
+    assigned_technician?: string | null;
+    shadow_technician?: string | null;
+    plant_id?: string;
+    machine_id?: string;
+  }
+>(alert: T): T {
+  if (!alert) return alert;
+
+  if (!alert.assigned_technician) {
+    if (alert.shadow_technician) {
+      return { ...alert, shadow_technician: null };
+    }
+    return alert;
+  }
+
+  const seed = getSeedData();
+  const techList: Technician[] = (seed.technicians as Technician[]) || [];
+  const assignedTech = techList.find((t) => t.id === alert.assigned_technician);
+
+  if (!assignedTech) return alert;
+
+  const roleLower = (assignedTech.role || '').toLowerCase();
+  if (roleLower.includes('junior') || roleLower.includes('trainee')) {
+    if (alert.shadow_technician) {
+      return { ...alert, shadow_technician: null };
+    }
+    return alert;
+  }
+
+  const plantId = alert.plant_id || assignedTech.plant_id || 'P-07';
+  const eligibleShadows = getEligibleShadowTechnicians({
+    plantId,
+    assignedTechnicianShift: assignedTech.shift,
+    assignedTechnicianId: alert.assigned_technician,
+    technicians: techList,
+  });
+
+  if (eligibleShadows.length === 0) {
+    if (alert.shadow_technician) {
+      return { ...alert, shadow_technician: null };
+    }
+    return alert;
+  }
+
+  // If already set and eligible, keep it
+  if (alert.shadow_technician && eligibleShadows.some((s) => s.id === alert.shadow_technician)) {
+    return alert;
+  }
+
+  // If shadow_technician is set, assign the first eligible shadow on the same shift
+  if (alert.shadow_technician) {
+    return {
+      ...alert,
+      shadow_technician: eligibleShadows[0].id,
+    };
+  }
+
+  return alert;
 }

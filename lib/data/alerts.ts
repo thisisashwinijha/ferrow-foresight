@@ -1,30 +1,34 @@
 import { getSeedData, queryWithFallback } from './db';
 import { Alert } from '../types';
 import { getMachineByIdSync } from './machines';
+import { normalizeAlertShadowTechnician } from '../technicianAssignment';
 
 export function getAlertsSync(plantId?: string, lineId?: string): Alert[] {
   const data = getSeedData();
   const alerts: Alert[] = (data.alerts as unknown as Alert[]) || [];
 
-  return alerts.filter((alert) => {
-    const machine = getMachineByIdSync(alert.machine_id);
-    const alertPlant = alert.plant_id || machine?.plant_id;
-    if (plantId && plantId !== 'all' && alertPlant !== plantId) return false;
+  return alerts
+    .filter((alert) => {
+      const machine = getMachineByIdSync(alert.machine_id);
+      const alertPlant = alert.plant_id || machine?.plant_id;
+      if (plantId && plantId !== 'all' && alertPlant !== plantId) return false;
 
-    if (lineId && lineId !== 'all') {
-      const machineLine = machine?.line_id;
-      const windowLine = alert.proposed_window?.line_id;
-      if (machineLine !== lineId && windowLine !== lineId) return false;
-    }
+      if (lineId && lineId !== 'all') {
+        const machineLine = machine?.line_id;
+        const windowLine = alert.proposed_window?.line_id;
+        if (machineLine !== lineId && windowLine !== lineId) return false;
+      }
 
-    return true;
-  });
+      return true;
+    })
+    .map((a) => normalizeAlertShadowTechnician(a));
 }
 
 export function getAlertByIdSync(id: string): Alert | undefined {
   const data = getSeedData();
   const alerts: Alert[] = (data.alerts as unknown as Alert[]) || [];
-  return alerts.find((a) => a.id === id);
+  const found = alerts.find((a) => a.id === id);
+  return found ? normalizeAlertShadowTechnician(found) : undefined;
 }
 
 export async function getAlerts(plantId: string, lineId?: string): Promise<Alert[]> {
@@ -53,7 +57,7 @@ export async function getAlerts(plantId: string, lineId?: string): Promise<Alert
           return windowLine === lineId || machine?.line_id === lineId;
         });
       }
-      return { data: filtered, error: null };
+      return { data: filtered.map(normalizeAlertShadowTechnician), error: null };
     },
     () => getAlertsSync(plantId, lineId),
     'getAlerts'
@@ -72,7 +76,7 @@ export async function getAlertById(id: string, plantId?: string): Promise<Alert 
         const local = getAlertByIdSync(id);
         return { data: local || null, error: null };
       }
-      return { data: (data as Alert) || undefined, error };
+      return { data: normalizeAlertShadowTechnician(data as Alert), error };
     },
     () => getAlertByIdSync(id),
     'getAlertById'

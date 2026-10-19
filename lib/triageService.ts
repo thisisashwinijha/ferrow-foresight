@@ -9,6 +9,10 @@ import {
 } from './data/localStore';
 import { runAllGuardrails } from './guardrails';
 import { executeAgent, AgentExecutionResult } from './agents';
+import {
+  getEligibleShadowTechnicians,
+  normalizeAlertShadowTechnician,
+} from './technicianAssignment';
 
 export interface TriageInput {
   machine_id: string;
@@ -230,6 +234,13 @@ function computeRuleBasedTriage(
 
   const reasoning = `Technician observation cited in E1 (${obsId}) reported sensory cues [${(input.symptom_tags || []).join(', ')}] on asset ${input.machine_id}.${sensorCitation} Diagnostic findings indicate ${descriptiveTitle}.`;
 
+  const eligibleShadows = getEligibleShadowTechnicians({
+    plantId: machine.plant_id || input.plant_id || 'P-07',
+    assignedTechnicianShift: assignedShift,
+    assignedTechnicianId: assignedTechId,
+  });
+  const shadowTechId = eligibleShadows.length > 0 ? eligibleShadows[0].id : null;
+
   const alertCandidate: Alert = {
     id: alertId,
     machine_id: input.machine_id,
@@ -250,7 +261,7 @@ function computeRuleBasedTriage(
     required_certifications: requiredCerts,
     loto_required: true,
     assigned_technician: assignedTechId,
-    shadow_technician: assignedShift === 'A' ? 'P07-T08' : 'P07-T07',
+    shadow_technician: shadowTechId,
     proposed_window: {
       line_id: machine.line_id || 'P07-L1',
       date: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
@@ -466,13 +477,15 @@ export async function triageService(input: TriageInput): Promise<TriageResult> {
     prompt_version: agentExecution.prompt_version,
   };
 
+  const finalAlert = normalizeAlertShadowTechnician(alert);
+
   // If this was an existing alert re-run, update it
   if (input.alert_id) {
-    mutateLocalAlert(input.alert_id, alert);
+    mutateLocalAlert(input.alert_id, finalAlert);
   } else {
     // New observation + alert
     addLocalObservation(observation);
-    addLocalAlert(alert);
+    addLocalAlert(finalAlert);
   }
 
   // Sync to Supabase if connected
@@ -480,7 +493,7 @@ export async function triageService(input: TriageInput): Promise<TriageResult> {
     const { getSupabaseAdminClient } = await import('./supabaseAdmin');
     const admin = getSupabaseAdminClient();
     if (admin) {
-      const { spares_blocked, ...supabaseAlert } = alert as any;
+      const { spares_blocked, ...supabaseAlert } = finalAlert as any;
       if (input.alert_id) {
         await admin.from('alerts').update(supabaseAlert).eq('id', input.alert_id);
       } else {
@@ -494,7 +507,7 @@ export async function triageService(input: TriageInput): Promise<TriageResult> {
 
   return {
     observation: input.alert_id ? undefined : observation,
-    alert,
+    alert: finalAlert,
     execution: agentExecution,
   };
 }

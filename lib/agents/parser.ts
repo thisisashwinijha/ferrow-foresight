@@ -11,6 +11,7 @@ import {
   getQualifyingTechniciansForShift,
   getEligibleShadowTechnicians,
 } from '../technicianAssignment';
+import { getSeedData } from '../data/db';
 import { AgentType } from './types';
 
 /**
@@ -292,11 +293,19 @@ export function parseAgentResponse(
         }
 
         // Shadow technician: only Junior or Trainee on the same shift as assigned technician; otherwise null
+        const seed = getSeedData();
+        const technicians = (seed.technicians as any[]) || [];
+        const assignedTech = parsed.assigned_technician
+          ? technicians.find((t) => t.id === parsed.assigned_technician)
+          : null;
+        const techShift = assignedTech ? assignedTech.shift : windowShift;
+
         const eligibleShadows = parsed.assigned_technician
           ? getEligibleShadowTechnicians({
               plantId,
-              assignedTechnicianShift: windowShift,
+              assignedTechnicianShift: techShift,
               assignedTechnicianId: parsed.assigned_technician,
+              technicians,
             })
           : [];
 
@@ -305,7 +314,7 @@ export function parseAgentResponse(
           if (!isShadowEligible) {
             parsed.shadow_technician = eligibleShadows.length > 0 ? eligibleShadows[0].id : null;
           }
-        } else if (eligibleShadows.length > 0) {
+        } else if (eligibleShadows.length > 0 && assignedTech && !assignedTech.role.toLowerCase().includes('junior') && !assignedTech.role.toLowerCase().includes('trainee')) {
           parsed.shadow_technician = eligibleShadows[0].id;
         }
       }
