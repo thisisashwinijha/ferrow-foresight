@@ -77,6 +77,34 @@ export function formatFailureMode(mode?: string | null): string {
 }
 
 /**
+ * Humanises raw database and code values into clean, sentence-case UI text.
+ * e.g. "conveyor_drive" -> "Conveyor drive"
+ *      "fault_found" -> "Fault found"
+ *      "bearing_wear" -> "Bearing wear"
+ *      "sensor_threshold" -> "Sensor threshold"
+ *      "no_fault" -> "No fault"
+ */
+export function humanizeRawValue(val?: string | null): string {
+  if (!val) return '';
+  const map: Record<string, string> = {
+    conveyor_drive: 'Conveyor drive',
+    fault_found: 'Fault found',
+    bearing_wear: 'Bearing wear',
+    sensor_threshold: 'Sensor threshold',
+    no_fault: 'No fault',
+    inspect: 'Inspect',
+    repair: 'Repair',
+    replace: 'Replace',
+    calibrate: 'Calibrate',
+    lube: 'Lubricate',
+  };
+  if (map[val]) return map[val];
+  const clean = val.replace(/_/g, ' ').trim();
+  if (!clean) return '';
+  return clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
+}
+
+/**
  * Formats an observation symptom tag into a readable chip text.
  * e.g. "sound:grinding" -> "Sound: grinding"
  *      "heat:hot_to_touch" -> "Heat: hot to touch"

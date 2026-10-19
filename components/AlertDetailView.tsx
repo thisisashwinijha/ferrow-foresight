@@ -20,7 +20,7 @@ import {
   GuardrailCheckResult,
   STANDARD_LOTO_CHECKLIST,
 } from '@/lib/guardrails';
-import { formatFailureMode, formatObservationTag } from '@/lib/lifecycle';
+import { formatFailureMode, formatObservationTag, humanizeRawValue } from '@/lib/lifecycle';
 import { WorkflowFlowTracker } from './WorkflowFlowTracker';
 import { isAlertNeedsReview, getEffectiveAlertStatus } from '@/lib/workflow';
 import {
@@ -549,7 +549,7 @@ export function AlertDetailView({
               <span>·</span>
               <span>Criticality {machine.criticality}</span>
               <span>·</span>
-              <span>Trigger: {alert.trigger}</span>
+              <span>Trigger: {humanizeRawValue(alert.trigger)}</span>
               <span>·</span>
               <span>Created: {new Date(alert.created_at).toLocaleString()}</span>
             </p>
@@ -847,7 +847,9 @@ export function AlertDetailView({
                     {alert.spares_check.map((part) => {
                       const live = liveSparesMap.get(part.part_id);
                       const currentStock = live !== undefined ? live.stock : part.stock;
+                      const minLevel = live?.min_level ?? 2;
                       const isStockout = currentStock <= 0;
+                      const isBelowMin = !isStockout && currentStock <= minLevel;
 
                       return (
                         <tr key={part.part_id} className="hover:bg-surface-2/40 transition-colors">
@@ -863,6 +865,10 @@ export function AlertDetailView({
                             {isStockout ? (
                               <span className="px-2 py-0.5 rounded-chip text-[11px] font-medium bg-danger/10 text-danger">
                                 Stockout (Blocked)
+                              </span>
+                            ) : isBelowMin ? (
+                              <span className="px-2 py-0.5 rounded-chip text-[11px] font-medium bg-warning/10 text-warning">
+                                Available (below minimum)
                               </span>
                             ) : (
                               <span className="px-2 py-0.5 rounded-chip text-[11px] font-medium bg-ok/10 text-ok">

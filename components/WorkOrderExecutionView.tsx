@@ -13,6 +13,7 @@ import {
   Spares,
 } from '@/lib/types';
 import { formatShiftFull, formatShiftShort } from '@/lib/shifts';
+import { humanizeRawValue } from '@/lib/lifecycle';
 import { usePlantContext } from './PlantContext';
 import { useToast } from './ToastContext';
 import { WorkflowFlowTracker } from './WorkflowFlowTracker';
@@ -1082,7 +1083,7 @@ export function WorkOrderExecutionView({
 
           <div className="bg-surface rounded-card p-4 border border-line/30 space-y-2.5 text-xs">
             <div className="font-semibold text-ink">
-              Subject: Spherical Roller Bearing Replacement on {machine.type} ({machine.make})
+              Subject: Spherical Roller Bearing Replacement on {humanizeRawValue(machine.type)} ({machine.make})
             </div>
             <div className="text-ink-muted leading-relaxed">
               <strong>Failure Signature:</strong> Rapid temperature rise coupled with 4.5+ mm/s ISO vibration band spike.

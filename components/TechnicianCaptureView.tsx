@@ -11,7 +11,7 @@ import {
   Alert as AlertType,
   Observation,
 } from '@/lib/types';
-import { formatFailureMode, formatObservationTag } from '@/lib/lifecycle';
+import { formatFailureMode, formatObservationTag, humanizeRawValue } from '@/lib/lifecycle';
 import { usePlantContext } from './PlantContext';
 import { useToast } from './ToastContext';
 import {
@@ -614,7 +614,7 @@ export function TechnicianCaptureView({
                       <div className="flex items-center gap-2.5 text-[11px] text-ink-muted mt-1">
                         <span>{lineInfo?.name || m.line_id}</span>
                         <span>·</span>
-                        <span>{m.type}</span>
+                        <span>{humanizeRawValue(m.type)}</span>
                         <span>·</span>
                         <span>Criticality {m.criticality}</span>
                       </div>

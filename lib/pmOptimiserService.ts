@@ -144,7 +144,7 @@ export function computeRuleBasedPmOptimiser(plantId = 'P-07'): PmOptimiserResult
         confidence = 0.95;
         riskIfWrong = 'high';
       } else if (!hasSensors && machineCriticality !== 'C') {
-        reason = `Criticality ${machineCriticality} machine without continuous telemetry. Statutory calendar schedule maintained.`;
+        reason = `Criticality ${machineCriticality} machine without continuous telemetry. No sensor data; keep the scheduled visit.`;
         confidence = 0.85;
         riskIfWrong = 'medium';
       }

@@ -18,7 +18,7 @@ import {
 } from '@/lib/types';
 import { useMachineTelemetry } from '@/lib/simulator';
 import { getVibrationSeverity, getTemperatureSeverity } from '@/lib/risk';
-import { formatFailureMode, formatObservationTag } from '@/lib/lifecycle';
+import { formatFailureMode, formatObservationTag, humanizeRawValue } from '@/lib/lifecycle';
 import { generateMachineSummary } from '@/lib/machineSummary';
 import {
   Activity,
@@ -154,11 +154,14 @@ export function MachineHistoryCard({
     return Number((totalHours / breakdowns.length).toFixed(1));
   }, [maintenanceLogs]);
 
-  // AI Summary synthesis using copilotService
+  // AI Summary synthesis using copilotService with live chart values
   const aiSummaryText = useMemo(() => {
-    const copilotResp = generateMachineSummary(machine.id, machine.plant_id || 'P-07');
+    const copilotResp = generateMachineSummary(machine.id, machine.plant_id || 'P-07', {
+      vibration_mm_s: currentVib ?? undefined,
+      temperature_c: currentTemp ?? undefined,
+    });
     return copilotResp.answer;
-  }, [machine]);
+  }, [machine, currentVib, currentTemp]);
 
   return (
     <div className="space-y-6 max-w-[1400px] mx-auto pb-12">
@@ -603,9 +606,9 @@ export function MachineHistoryCard({
                             >
                               {log.type}
                             </span>
-                            <span className="font-medium text-ink">{log.finding}</span>
+                            <span className="font-medium text-ink">{humanizeRawValue(log.finding)}</span>
                             {log.failure_mode && (
-                              <span className="text-ink-muted">· {log.failure_mode}</span>
+                              <span className="text-ink-muted">· {formatFailureMode(log.failure_mode)}</span>
                             )}
                           </div>
                           <p className="text-[11px] text-ink-muted">{log.notes}</p>
@@ -727,7 +730,7 @@ export function MachineHistoryCard({
           {activeTab === 'spares' && (
             <div className="space-y-4">
               {spares.length === 0 ? (
-                <p className="text-xs text-ink-muted py-8 text-center">No compatible spares found for equipment type &quot;{machine.type}&quot;.</p>
+                <p className="text-xs text-ink-muted py-8 text-center">No compatible spares found for equipment type &quot;{humanizeRawValue(machine.type)}&quot;.</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left">
@@ -789,7 +792,7 @@ export function MachineHistoryCard({
           {activeTab === 'knowledge' && (
             <div className="space-y-4">
               {knowledge.length === 0 ? (
-                <p className="text-xs text-ink-muted py-8 text-center">No veteran knowledge records registered for type &quot;{machine.type}&quot;.</p>
+                <p className="text-xs text-ink-muted py-8 text-center">No veteran knowledge records registered for type &quot;{humanizeRawValue(machine.type)}&quot;.</p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {knowledge.map((item) => (

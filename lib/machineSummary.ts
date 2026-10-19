@@ -12,7 +12,8 @@ export interface MachineSummaryResponse {
 
 export function generateMachineSummary(
   machineId: string,
-  plantId: string = 'P-07'
+  plantId: string = 'P-07',
+  liveTelemetry?: { vibration_mm_s?: number; temperature_c?: number }
 ): MachineSummaryResponse {
   const machine = getMachineByIdSync(machineId);
   const alerts = getAlertsSync(plantId).filter((a) => a.machine_id === machineId);
@@ -32,9 +33,28 @@ export function generateMachineSummary(
     const activeAlert = alerts.find(
       (a) => a.status === 'pending' || a.status === 'needs_review' || a.status === 'approved'
     );
-    const answer = `${machine.id} (${machine.name}) is a Criticality ${machine.criticality} asset on Line ${machine.line_id}. Live telemetry indicates vibration elevated at 4.8 mm/s against a 2.1 mm/s baseline (ISO 10816 Class II Alarm). ${
+    const vibVal = liveTelemetry?.vibration_mm_s !== undefined
+      ? liveTelemetry.vibration_mm_s.toFixed(2)
+      : (machine.vibration_baseline ? (machine.vibration_baseline * 1.5).toFixed(2) : '4.80');
+    const vibBase = machine.vibration_baseline !== undefined
+      ? machine.vibration_baseline.toFixed(2)
+      : '2.10';
+    const tempVal = liveTelemetry?.temperature_c !== undefined
+      ? ` with temperature at ${liveTelemetry.temperature_c.toFixed(1)}°C`
+      : '';
+
+    const isElevated = Number(vibVal) > Number(vibBase) * 1.5 || Boolean(activeAlert);
+    const vibStatus = isElevated
+      ? `elevated at ${vibVal} mm/s against a ${vibBase} mm/s baseline (ISO 10816 Class II Alarm)`
+      : `nominal at ${vibVal} mm/s against a ${vibBase} mm/s baseline`;
+
+    const failureModeDesc = activeAlert?.failure_mode
+      ? activeAlert.failure_mode.replace(/_/g, ' ')
+      : 'bearing wear';
+
+    const answer = `${machine.id} (${machine.name}) is a Criticality ${machine.criticality} asset on Line ${machine.line_id}. Live telemetry indicates vibration ${vibStatus}${tempVal}. ${
       activeAlert
-        ? `Triage alert ${activeAlert.id} diagnosed ${activeAlert.failure_mode.replace(/_/g, ' ')} with urgency ${activeAlert.urgency}.`
+        ? `Triage alert ${activeAlert.id} diagnosed ${failureModeDesc} with urgency ${activeAlert.urgency}.`
         : 'Telemetry parameters currently nominal.'
     } PM Optimiser has scheduled routine inspection with safe window alignment.`;
 

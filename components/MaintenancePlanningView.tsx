@@ -664,7 +664,11 @@ export function MaintenancePlanningView({
                   const aiDec = decisionsMap.get(plan.id);
                   const decision = aiDec?.decision || plan.ai_suggestion;
                   const newDueDate = aiDec?.new_due_date || plan.due_date;
-                  const reason = aiDec?.reason || plan.ai_reason;
+                  const rawReason = aiDec?.reason || plan.ai_reason || '';
+                  const reason = rawReason.replace(
+                    /Statutory calendar schedule maintained\.?/g,
+                    'No sensor data; keep the scheduled visit.'
+                  );
                   const isAccepted = plan.status === 'accepted';
                   const isOverridden = plan.status === 'overridden';
 
@@ -703,7 +707,7 @@ export function MaintenancePlanningView({
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
                             <span
-                              className={`px-2 py-0.5 rounded-chip text-[10px] font-semibold uppercase tracking-wider ${
+                              className={`px-2 py-0.5 rounded-chip text-[10px] font-semibold ${
                                 decision === 'defer'
                                   ? 'bg-ok/10 text-ok'
                                   : decision === 'pull_forward'
@@ -711,11 +715,11 @@ export function MaintenancePlanningView({
                                   : 'bg-surface-2 text-ink-muted'
                               }`}
                             >
-                              {decision === 'pull_forward' ? 'Pull forward' : decision}
+                              {decision === 'pull_forward' ? 'Pull forward' : decision === 'defer' ? 'Defer' : 'Keep'}
                             </span>
                             {aiDec?.risk_if_wrong && (
                               <span className="text-[10px] text-ink-muted capitalize">
-                                Risk: {aiDec.risk_if_wrong}
+                                Risk if wrong: {aiDec.risk_if_wrong}
                               </span>
                             )}
                           </div>

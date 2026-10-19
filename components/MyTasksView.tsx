@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePlantContext } from './PlantContext';
 import { Alert, WorkOrder, Machine, Spares, Technician, Plant } from '@/lib/types';
 import { getWorkflowStage } from '@/lib/workflow';
+import { humanizeRawValue } from '@/lib/lifecycle';
 import {
   CheckCircle2,
   AlertTriangle,
@@ -125,7 +126,7 @@ export function MyTasksView({
           variant: alert.urgency === 'P1' ? 'alarm' : 'warning',
         },
         meta: [
-          `Trigger: ${alert.trigger || 'Vibration / Sensory'}`,
+          `Trigger: ${humanizeRawValue(alert.trigger) || 'Vibration / Sensory'}`,
           `Confidence: ${Math.round((alert.confidence || 0.85) * 100)}%`,
           `Machine: ${machine?.name || alert.machine_id}`,
         ],
