@@ -1,6 +1,7 @@
 import seedData from '@/data/seed_data.json';
 import { Alert, WorkOrder, Spares, Machine, Observation, MaintenanceLog, PmPlan, KnowledgeLibrary } from '../types';
 import { getBaselineRiskScore, getBaselineHealthScore } from '../lifecycle';
+import { normalizeSeededWorkOrders } from '../workflow';
 
 let inMemoryStore: any = null;
 
@@ -53,6 +54,9 @@ export function getLocalStoreData(): any {
   }
 
   inMemoryStore = deepClone(seedData);
+  if (inMemoryStore.work_orders) {
+    inMemoryStore.work_orders = normalizeSeededWorkOrders(inMemoryStore.work_orders);
+  }
   return inMemoryStore;
 }
 
@@ -74,6 +78,9 @@ export function saveLocalStoreData(newData: any): void {
 
 export function resetLocalStoreData(): void {
   inMemoryStore = deepClone(seedData);
+  if (inMemoryStore.work_orders) {
+    inMemoryStore.work_orders = normalizeSeededWorkOrders(inMemoryStore.work_orders);
+  }
   const fs = getFs();
   const path = getPath();
   if (fs && path) {

@@ -17,7 +17,7 @@ import {
   Technician,
 } from '@/lib/types';
 import { useMachineTelemetry } from '@/lib/simulator';
-import { getVibrationSeverity, getTemperatureSeverity } from '@/lib/risk';
+import { getVibrationSeverity, getTemperatureSeverity, RISK_SCORE_TOOLTIP } from '@/lib/risk';
 import { formatFailureMode, formatObservationTag, humanizeRawValue } from '@/lib/lifecycle';
 import { generateMachineSummary } from '@/lib/machineSummary';
 import {
@@ -32,6 +32,7 @@ import {
   FileText,
   Gauge,
   HelpCircle,
+  Info,
   Package,
   Radio,
   Shield,
@@ -237,7 +238,10 @@ export function MachineHistoryCard({
 
           {/* Health & Risk Badges */}
           <div className="flex items-center gap-3 shrink-0">
-            <div className="px-4 py-2 rounded-card bg-surface-2/60 border border-line/20 text-center min-w-[100px]">
+            <div
+              className="px-4 py-2 rounded-card bg-surface-2/60 border border-line/20 text-center min-w-[100px] cursor-help"
+              title="Health = 100 - Risk score"
+            >
               <span className="text-[11px] text-ink-muted block font-medium">
                 Health
               </span>
@@ -250,9 +254,14 @@ export function MachineHistoryCard({
               </span>
             </div>
 
-            <div className="px-4 py-2 rounded-card bg-surface-2/60 border border-line/20 text-center min-w-[100px]">
-              <span className="text-[11px] text-ink-muted block font-medium">
+            <div
+              className="px-4 py-2 rounded-card bg-surface-2/60 border border-line/20 text-center min-w-[100px] cursor-help"
+              title={RISK_SCORE_TOOLTIP}
+              data-testid="machine-risk-score"
+            >
+              <span className="text-[11px] text-ink-muted block font-medium flex items-center justify-center gap-1">
                 Risk score
+                <Info className="w-3 h-3 text-ink-muted shrink-0" />
               </span>
               <span
                 className={`text-2xl font-light tabular-nums ${

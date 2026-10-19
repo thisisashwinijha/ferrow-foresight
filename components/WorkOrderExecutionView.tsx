@@ -14,6 +14,7 @@ import {
 } from '@/lib/types';
 import { formatShiftFull, formatShiftShort } from '@/lib/shifts';
 import { humanizeRawValue } from '@/lib/lifecycle';
+import { isSparesConfirmed, isWindowConfirmed } from '@/lib/workflow';
 import { usePlantContext } from './PlantContext';
 import { useToast } from './ToastContext';
 import { WorkflowFlowTracker } from './WorkflowFlowTracker';
@@ -95,23 +96,15 @@ export function WorkOrderExecutionView({
   const isClosed = workOrder.status === 'closed';
 
   // Stage 5 and 6 Confirmation States
-  const sparesConfirmed = Boolean(
-    workOrder.spares_reserved &&
-      (workOrder.spares_reserved.confirmed ||
-        (Array.isArray(workOrder.spares_reserved) && (workOrder.spares_reserved as any).confirmed))
-  );
+  const sparesConfirmed = isSparesConfirmed(workOrder);
+  const windowConfirmed = isWindowConfirmed(workOrder);
+  const bothClearancesConfirmed = sparesConfirmed && windowConfirmed;
 
   const isPRRaised = Boolean(
     workOrder.spares_reserved &&
       ((workOrder.spares_reserved as any).purchase_request_raised ||
         (Array.isArray(workOrder.spares_reserved) &&
           (workOrder.spares_reserved as any[]).some((s: any) => s.purchase_request_raised)))
-  );
-
-  const windowConfirmed = Boolean(
-    workOrder.scheduled_window &&
-      (workOrder.scheduled_window.confirmed ||
-        workOrder.scheduled_window.production_status === 'confirmed')
   );
 
   const isRescheduleRequested = Boolean(
@@ -123,8 +116,16 @@ export function WorkOrderExecutionView({
   const isTechnician = role === 'Technician';
   const isAssignedTech = workOrder.assigned_technician === activeTechId || activeTechId === 'P07-T01';
   const isScheduledOrActive = ['scheduled', 'loto_applied', 'in_progress', 'ready'].includes(workOrder.status);
-  const canExecute = isTechnician && isAssignedTech && isScheduledOrActive && !isClosed;
-  const executionDisabledReason = !isScheduledOrActive
+  
+  // Execution strictly gated on BOTH spares and window confirmations
+  const canExecute = isTechnician && isAssignedTech && bothClearancesConfirmed && !isClosed;
+  const executionDisabledReason = !bothClearancesConfirmed
+    ? !sparesConfirmed && !windowConfirmed
+      ? 'Pre-execution clearance required: Spares (Stage 5) and Maintenance Window (Stage 6) must both be confirmed before LOTO and task execution can proceed.'
+      : !sparesConfirmed
+      ? 'Pre-execution clearance required: Spares (Stage 5) must be confirmed by Stores In-charge before LOTO and task execution can proceed.'
+      : 'Pre-execution clearance required: Maintenance Window (Stage 6) must be confirmed by Production Manager before LOTO and task execution can proceed.'
+    : !isScheduledOrActive
     ? 'Pre-execution clearance required: Spares (Stage 5) and Maintenance Window (Stage 6) must be confirmed first.'
     : !isTechnician
     ? 'Only assigned Technician can apply LOTO and execute maintenance tasks.'
@@ -451,28 +452,30 @@ export function WorkOrderExecutionView({
             </div>
           </div>
 
-          {/* Persona Swapping for verification */}
-          <div className="bg-surface-2/60 p-2.5 rounded-card border border-line/30 space-y-1.5 min-w-[220px]">
-            <div className="flex items-center justify-between text-[11px] text-ink-muted">
-              <span className="font-medium flex items-center gap-1">
-                <HardHat className="w-3 h-3" /> Execution Actor
-              </span>
-              <span className="text-[10px] bg-surface px-1.5 py-0.2 rounded-chip font-mono">
-                {role}
-              </span>
+          {/* Execution Actor technician picker - appears only for Technician and Maintenance Planner roles */}
+          {(role === 'Technician' || role === 'Maintenance Planner') && (
+            <div className="bg-surface-2/60 p-2.5 rounded-card border border-line/30 space-y-1.5 min-w-[220px]">
+              <div className="flex items-center justify-between text-[11px] text-ink-muted">
+                <span className="font-medium flex items-center gap-1">
+                  <HardHat className="w-3 h-3" /> Execution Actor
+                </span>
+                <span className="text-[10px] bg-surface px-1.5 py-0.2 rounded-chip font-mono">
+                  {role}
+                </span>
+              </div>
+              <select
+                value={activeTechId}
+                onChange={(e) => setActiveTechId(e.target.value)}
+                className="w-full bg-surface text-xs font-medium text-ink px-2 py-1 rounded-btn border border-line/40 focus:outline-hidden"
+              >
+                {technicians.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.id}: {t.name} ({t.role})
+                  </option>
+                ))}
+              </select>
             </div>
-            <select
-              value={activeTechId}
-              onChange={(e) => setActiveTechId(e.target.value)}
-              className="w-full bg-surface text-xs font-medium text-ink px-2 py-1 rounded-btn border border-line/40 focus:outline-hidden"
-            >
-              {technicians.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.id}: {t.name} ({t.role})
-                </option>
-              ))}
-            </select>
-          </div>
+          )}
         </div>
 
         {/* Info Grid: Window, Techs, Spares */}
@@ -785,11 +788,22 @@ export function WorkOrderExecutionView({
           </span>
         </div>
 
+        {/* Locked reason banner if clearances missing */}
+        {!bothClearancesConfirmed && (
+          <div className="bg-amber-500/10 border border-amber-500/30 text-amber-900 text-xs p-3.5 rounded-btn flex items-center gap-2.5">
+            <Lock className="w-4 h-4 shrink-0 text-amber-600" />
+            <div>
+              <span className="font-semibold block">LOTO safety isolation locked</span>
+              <span className="text-[11px] text-amber-800">{executionDisabledReason}</span>
+            </div>
+          </div>
+        )}
+
         {/* LOTO Checklist Table / Step List */}
         <div className="space-y-2">
           {lotoSteps.map((item, idx) => {
             const isPreviousDone = idx === 0 || lotoSteps[idx - 1].done;
-            const isUnlocked = isPreviousDone && canExecute && !isClosed;
+            const isUnlocked = isPreviousDone && canExecute && !isClosed && bothClearancesConfirmed;
 
             return (
               <div
@@ -881,7 +895,9 @@ export function WorkOrderExecutionView({
                 Phase 2: Maintenance Task Steps
               </h2>
               <p className="text-xs text-ink-muted">
-                {allLotoDone
+                {!bothClearancesConfirmed
+                  ? 'Locked: Pre-execution clearance required (Spares and Maintenance Window must both be confirmed)'
+                  : allLotoDone
                   ? 'Ticking the first task step updates status to In Progress'
                   : 'Locked: Complete all 6 LOTO isolation steps above to unlock maintenance execution'}
               </p>
@@ -901,7 +917,7 @@ export function WorkOrderExecutionView({
         <div className="space-y-2">
           {taskSteps.map((item, idx) => {
             const actualIndex = 6 + idx;
-            const isUnlocked = allLotoDone && canExecute && !isClosed;
+            const isUnlocked = allLotoDone && canExecute && !isClosed && bothClearancesConfirmed;
 
             return (
               <div

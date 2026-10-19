@@ -79,3 +79,71 @@ export function getUrgencyFromSeverity(
 }
 
 export const DOWNTIME_COST_USD_PER_HOUR = 18000;
+
+/**
+ * Consequence factor based on asset criticality:
+ * Criticality A: 1.0
+ * Criticality B: 0.6
+ * Criticality C: 0.3
+ */
+export function getConsequenceFactor(criticality?: MachineCriticality | string | null): number {
+  switch (criticality?.toUpperCase()) {
+    case 'A':
+      return 1.0;
+    case 'B':
+      return 0.6;
+    case 'C':
+      return 0.3;
+    default:
+      return 0.6;
+  }
+}
+
+/**
+ * Severity factor:
+ * - Critical / P1: 1.0
+ * - Alarm / P2: 0.8
+ * - Watch / P3: 0.5
+ * - Normal / None: 0.2
+ */
+export function getSeverityFactor(severityOrUrgency?: string | null): number {
+  if (!severityOrUrgency) return 0.5;
+  const s = severityOrUrgency.toLowerCase();
+  if (s === 'critical' || s === 'p1') return 1.0;
+  if (s === 'alarm' || s === 'p2') return 0.8;
+  if (s === 'watch' || s === 'p3') return 0.5;
+  if (s === 'normal' || s === 'none') return 0.2;
+  return 0.5;
+}
+
+/**
+ * Likelihood derived from severity and confidence:
+ * likelihood = severity_factor * confidence
+ */
+export function getLikelihood(severityOrUrgency?: string | null, confidence = 0.85): number {
+  const sevFactor = getSeverityFactor(severityOrUrgency);
+  const conf = Math.max(0, Math.min(1, confidence));
+  return sevFactor * conf;
+}
+
+/**
+ * Risk score for new live alerts:
+ * risk = likelihood x consequence x 100 (likelihood from severity and confidence; consequence A 1.0, B 0.6, C 0.3)
+ * Health = 100 - risk
+ */
+export function calculateLiveRiskScore(params: {
+  criticality?: MachineCriticality | string | null;
+  severityOrUrgency?: string | null;
+  confidence?: number;
+}): { risk: number; health: number; likelihood: number; consequence: number } {
+  const consequence = getConsequenceFactor(params.criticality);
+  const likelihood = getLikelihood(params.severityOrUrgency, params.confidence ?? 0.85);
+  const rawRisk = likelihood * consequence * 100;
+  const risk = Math.max(0, Math.min(100, Math.round(rawRisk)));
+  const health = Math.max(0, 100 - risk);
+  return { risk, health, likelihood, consequence };
+}
+
+export const RISK_SCORE_TOOLTIP =
+  'Risk score = Likelihood × Consequence × 100 (Likelihood from severity & confidence; Consequence: A = 1.0, B = 0.6, C = 0.3; Health = 100 - Risk)';
+

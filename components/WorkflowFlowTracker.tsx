@@ -8,7 +8,7 @@ import {
   getWaitingForRole,
 } from '@/lib/workflow';
 import { Alert, WorkOrder } from '@/lib/types';
-import { Check, Clock, ChevronRight } from 'lucide-react';
+import { Check, Clock, ChevronRight, CheckCircle2 } from 'lucide-react';
 
 interface WorkflowFlowTrackerProps {
   alert?: Alert | null;
@@ -45,10 +45,17 @@ export function WorkflowFlowTracker({
           </span>
         </div>
 
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-chip bg-accent/10 border border-accent/20 text-accent font-medium text-[11px] shrink-0">
-          <Clock className="w-3 h-3 shrink-0" />
-          <span>Waiting for: <strong>{waitingFor}</strong></span>
-        </div>
+        {currentStage === 9 ? (
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-chip bg-ok/10 border border-ok/20 text-ok font-medium text-[11px] shrink-0">
+            <CheckCircle2 className="w-3 h-3 shrink-0 text-ok" />
+            <span><strong>Completed</strong></span>
+          </div>
+        ) : (
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-chip bg-accent/10 border border-accent/20 text-accent font-medium text-[11px] shrink-0">
+            <Clock className="w-3 h-3 shrink-0" />
+            <span>Waiting for: <strong>{waitingFor}</strong></span>
+          </div>
+        )}
       </div>
 
       {/* Horizontal Stepper */}

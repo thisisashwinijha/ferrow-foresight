@@ -5,6 +5,7 @@ import { getWorkOrderByIdSync } from '@/lib/data/workOrders';
 import { mutateLocalWorkOrder } from '@/lib/data/localStore';
 import { getSupabaseAdminClient } from '@/lib/supabaseAdmin';
 import { WorkOrder } from '@/lib/types';
+import { isSparesConfirmed, isWindowConfirmed } from '@/lib/workflow';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -51,6 +52,23 @@ export async function POST(
       return NextResponse.json(
         { success: false, error: 'Cannot modify a closed work order' },
         { status: 400 }
+      );
+    }
+
+    // Execution gating: a work order cannot enter LOTO or execution until BOTH spares and window are confirmed
+    const sparesConfirmed = isSparesConfirmed(workOrder);
+    const windowConfirmed = isWindowConfirmed(workOrder);
+
+    if (!sparesConfirmed || !windowConfirmed) {
+      const reason = !sparesConfirmed && !windowConfirmed
+        ? 'Pre-execution clearance required: Spares (Stage 5) and Maintenance Window (Stage 6) must both be confirmed before LOTO and task execution can proceed.'
+        : !sparesConfirmed
+        ? 'Pre-execution clearance required: Spares (Stage 5) must be confirmed by Stores In-charge before LOTO and task execution can proceed.'
+        : 'Pre-execution clearance required: Maintenance Window (Stage 6) must be confirmed by Production Manager before LOTO and task execution can proceed.';
+
+      return NextResponse.json(
+        { success: false, error: reason },
+        { status: 403 }
       );
     }
 

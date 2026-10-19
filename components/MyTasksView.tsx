@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePlantContext } from './PlantContext';
 import { Alert, WorkOrder, Machine, Spares, Technician, Plant } from '@/lib/types';
-import { getWorkflowStage } from '@/lib/workflow';
+import { getWorkflowStage, isSparesConfirmed, isWindowConfirmed } from '@/lib/workflow';
 import { humanizeRawValue } from '@/lib/lifecycle';
 import {
   CheckCircle2,
@@ -62,9 +62,13 @@ export function MyTasksView({
 
   // 1. Technician tasks
   if (role === 'Technician') {
-    const actionableWos = initialWorkOrders.filter((wo) =>
-      ['scheduled', 'loto_applied', 'in_progress', 'ready'].includes(wo.status)
-    );
+    const actionableWos = initialWorkOrders.filter((wo) => {
+      if (['in_progress', 'loto_applied'].includes(wo.status)) return true;
+      if (['scheduled', 'ready', 'approved'].includes(wo.status)) {
+        return isSparesConfirmed(wo) && isWindowConfirmed(wo);
+      }
+      return false;
+    });
 
     for (const wo of actionableWos) {
       const machine = machineMap.get(wo.machine_id);
@@ -200,8 +204,7 @@ export function MyTasksView({
     const pendingWindowWos = initialWorkOrders.filter(
       (wo) =>
         (wo.status === 'approved' || wo.status === 'raised') &&
-        !wo.scheduled_window?.confirmed &&
-        wo.scheduled_window?.production_status !== 'confirmed' &&
+        !isWindowConfirmed(wo) &&
         wo.scheduled_window?.production_status !== 'reschedule_requested'
     );
 
@@ -232,12 +235,7 @@ export function MyTasksView({
     // Work orders needing spares confirmation (Stage 5)
     const pendingSparesWos = initialWorkOrders.filter((wo) => {
       if (wo.status !== 'approved' && wo.status !== 'raised') return false;
-      const sparesObj = wo.spares_reserved as any;
-      if (!sparesObj) return true;
-      if (Array.isArray(sparesObj)) {
-        return !sparesObj.some((s: any) => s.confirmed);
-      }
-      return !sparesObj.confirmed;
+      return !isSparesConfirmed(wo);
     });
 
     for (const wo of pendingSparesWos) {

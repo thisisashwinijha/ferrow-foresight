@@ -37,19 +37,28 @@ interface WorkOrdersKanbanViewProps {
   technicians: Technician[];
 }
 
+import { isSparesConfirmed, isWindowConfirmed } from '@/lib/workflow';
+
 const KANBAN_COLUMNS: Array<{
-  id: WorkOrderStatus | 'raised_group';
+  id: WorkOrderStatus;
   statuses: WorkOrderStatus[];
   title: string;
   description: string;
   color: string;
 }> = [
   {
-    id: 'raised_group',
-    statuses: ['raised', 'approved'],
+    id: 'raised',
+    statuses: ['raised'],
     title: 'Raised',
     description: 'Awaiting scheduling & permit prep',
     color: 'border-line/60 text-ink-muted',
+  },
+  {
+    id: 'approved',
+    statuses: ['approved'],
+    title: 'Approved',
+    description: 'Approved, clearances pending',
+    color: 'border-amber-500/40 text-amber-600',
   },
   {
     id: 'scheduled',
@@ -289,8 +298,8 @@ export function WorkOrdersKanbanView({
         )}
       </div>
 
-      {/* 3. 5-Column Kanban Board */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-start">
+      {/* 3. 6-Column Kanban Board */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 items-start">
         {KANBAN_COLUMNS.map((col) => {
           const colWorkOrders = filteredWorkOrders.filter((w) =>
             col.statuses.includes(w.status)
@@ -334,6 +343,9 @@ export function WorkOrdersKanbanView({
                       : [];
                     const doneCount = checklist.filter((s) => s.done).length;
 
+                    const sparesOk = isSparesConfirmed(wo);
+                    const winOk = isWindowConfirmed(wo);
+
                     return (
                       <div
                         key={wo.id}
@@ -375,6 +387,23 @@ export function WorkOrdersKanbanView({
                             <span className="truncate">
                               {wo.scheduled_window.date} · {wo.scheduled_window.shift}
                             </span>
+                          </div>
+                        )}
+
+                        {/* Clearance status tag for approved / scheduled */}
+                        {(wo.status === 'approved' || wo.status === 'scheduled') && (
+                          <div className={`text-[10px] px-2 py-0.5 rounded-chip font-medium ${
+                            sparesOk && winOk
+                              ? 'bg-ok/10 text-ok'
+                              : 'bg-warning/10 text-warning'
+                          }`}>
+                            {sparesOk && winOk
+                              ? 'Clearances confirmed'
+                              : !sparesOk && !winOk
+                              ? 'Spares & Window pending'
+                              : !sparesOk
+                              ? 'Spares pending'
+                              : 'Window pending'}
                           </div>
                         )}
 

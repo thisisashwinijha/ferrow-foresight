@@ -47,6 +47,7 @@ const TAXONOMY_FAILURE_MODES = [
   'unknown',
   'none',
 ] as const;
+import { RISK_SCORE_TOOLTIP } from '@/lib/risk';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -55,6 +56,7 @@ import {
   Clock,
   DollarSign,
   FileText,
+  Info,
   Lock,
   Package,
   Shield,
@@ -555,8 +557,30 @@ export function AlertDetailView({
             </p>
           </div>
 
-          {/* Quick Metrics (Confidence & Cost Avoidance) */}
-          <div className="flex items-center gap-3 shrink-0">
+          {/* Quick Metrics (Confidence, Risk Score & Cost Avoidance) */}
+          <div className="flex items-center gap-3 shrink-0 flex-wrap">
+            <div
+              className="px-4 py-2 rounded-card bg-surface-2/60 border border-line/20 text-center min-w-[100px] cursor-help"
+              title={RISK_SCORE_TOOLTIP}
+              data-testid="alert-risk-score"
+            >
+              <span className="text-[11px] text-ink-muted block font-medium flex items-center justify-center gap-1">
+                Risk score
+                <Info className="w-3 h-3 text-ink-muted shrink-0" />
+              </span>
+              <span
+                className={`text-2xl font-light tabular-nums ${
+                  alert.risk_score > 70
+                    ? 'text-danger font-medium'
+                    : alert.risk_score > 40
+                    ? 'text-warning'
+                    : 'text-ink-muted'
+                }`}
+              >
+                {alert.risk_score}
+              </span>
+            </div>
+
             <div className="px-4 py-2 rounded-card bg-surface-2/60 border border-line/20 text-center min-w-[110px]">
               <span className="text-[11px] text-ink-muted block font-medium">Confidence</span>
               <span className="text-2xl font-light text-ink tabular-nums">

@@ -13,6 +13,7 @@ import {
   getEligibleShadowTechnicians,
   normalizeAlertShadowTechnician,
 } from './technicianAssignment';
+import { calculateLiveRiskScore } from './risk';
 
 export interface TriageInput {
   machine_id: string;
@@ -249,7 +250,11 @@ function computeRuleBasedTriage(
     trigger: input.symptom_tags?.length
       ? `Sensory capture: ${input.symptom_tags.join(', ')}`
       : 'Sensor threshold',
-    risk_score: urgency === 'P1' ? 84 : urgency === 'P2' ? 68 : 42,
+    risk_score: calculateLiveRiskScore({
+      criticality: machine.criticality,
+      severityOrUrgency: urgency,
+      confidence,
+    }).risk,
     failure_mode: failureMode,
     confidence,
     urgency,
@@ -432,6 +437,12 @@ export async function triageService(input: TriageInput): Promise<TriageResult> {
 
   const parsedAlert = agentExecution.data;
 
+  const liveRiskScore = calculateLiveRiskScore({
+    criticality: machine.criticality,
+    severityOrUrgency: parsedAlert.urgency || 'P3',
+    confidence: parsedAlert.confidence ?? 0.85,
+  });
+
   // Synthesize final alert entity
   const alert: Alert = {
     id: alertId,
@@ -441,7 +452,7 @@ export async function triageService(input: TriageInput): Promise<TriageResult> {
     trigger: input.symptom_tags?.length
       ? `Sensory capture: ${input.symptom_tags.join(', ')}`
       : 'Sensor threshold',
-    risk_score: parsedAlert.urgency === 'P1' ? 88 : parsedAlert.urgency === 'P2' ? 68 : 42,
+    risk_score: liveRiskScore.risk,
     failure_mode: parsedAlert.failure_mode || 'unknown',
     confidence: parsedAlert.confidence ?? 0.85,
     urgency: parsedAlert.urgency || 'P3',
@@ -488,6 +499,19 @@ export async function triageService(input: TriageInput): Promise<TriageResult> {
     addLocalAlert(finalAlert);
   }
 
+  // Update machine risk and health scores based on live alert
+  const machines = (store.machines as any[]) || [];
+  const mIndex = machines.findIndex((m: any) => m.id === input.machine_id);
+  if (mIndex !== -1) {
+    machines[mIndex].risk_score = liveRiskScore.risk;
+    machines[mIndex].health_score = liveRiskScore.health;
+    if (liveRiskScore.risk > 70) {
+      machines[mIndex].status = 'alarm';
+    } else if (liveRiskScore.risk > 40 && machines[mIndex].status !== 'alarm') {
+      machines[mIndex].status = 'warning';
+    }
+  }
+
   // Sync to Supabase if connected
   try {
     const { getSupabaseAdminClient } = await import('./supabaseAdmin');
@@ -500,6 +524,10 @@ export async function triageService(input: TriageInput): Promise<TriageResult> {
         await admin.from('observations').insert(observation);
         await admin.from('alerts').insert(supabaseAlert);
       }
+      await admin.from('machines').update({
+        risk_score: liveRiskScore.risk,
+        health_score: liveRiskScore.health,
+      }).eq('id', input.machine_id);
     }
   } catch (e) {
     // Expected in testing environments without server-only
