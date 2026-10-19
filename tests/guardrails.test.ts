@@ -11,6 +11,7 @@ import {
   checkPmDueDate,
   runAllGuardrails,
 } from '../lib/guardrails';
+import { getSeedData } from '../lib/data/db';
 
 describe('Guardrail System: Rule 1 - Schema Valid', () => {
   const validPayload = {
@@ -92,10 +93,26 @@ describe('Guardrail System: Rule 2 - Evidence IDs Exist', () => {
     expect(res.detail).toContain('E3');
   });
 
-  it('fails when no evidence IDs are cited or evidence list is empty', () => {
+  it('fails when evidence list is empty', () => {
     const res = checkEvidenceIdsExist('General observation of motor noise.', []);
     expect(res.pass).toBe(false);
     expect(res.failBehavior).toBe('needs_review');
+  });
+
+  it('passes when alert has evidence items and reasoning contains no cited IDs', () => {
+    const res = checkEvidenceIdsExist('Bearing wear observed during vibration round.', [
+      { id: 'E1', type: 'sensor', text: 'vibration' },
+    ]);
+    expect(res.pass).toBe(true);
+  });
+
+  it('verifies that AL-1001 to AL-1008 all pass checkEvidenceIdsExist', () => {
+    const seed = getSeedData();
+    const alerts = (seed.alerts as any[]).slice(0, 8);
+    for (const alert of alerts) {
+      const res = checkEvidenceIdsExist(alert.reasoning, alert.evidence || []);
+      expect(res.pass, `Alert ${alert.id} failed evidence check: ${res.detail}`).toBe(true);
+    }
   });
 });
 

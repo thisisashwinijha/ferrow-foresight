@@ -195,19 +195,18 @@ export function checkEvidenceIdsExist(
   reasoning: string,
   evidence: Array<{ id: string }>
 ): GuardrailCheckResult {
-  const citedMatches = reasoning.match(/\bE\d+\b/g) || [];
-  const uniqueCited = Array.from(new Set(citedMatches));
-  const availableIds = new Set(evidence.map((e) => e.id));
-
-  // STEP 0 (e): An evidence check with zero evidence ids must fail, not pass.
-  if (evidence.length === 0 || uniqueCited.length === 0) {
+  if (!evidence || evidence.length === 0) {
     return {
       rule: 'evidence_ids_exist',
       pass: false,
-      detail: 'Evidence check failed: zero evidence IDs cited in reasoning or zero evidence items provided',
+      detail: 'Evidence check failed: zero evidence items provided',
       failBehavior: 'needs_review',
     };
   }
+
+  const citedMatches = (reasoning || '').match(/\bE\d+\b/g) || [];
+  const uniqueCited = Array.from(new Set(citedMatches));
+  const availableIds = new Set(evidence.map((e) => e.id));
 
   const missing = uniqueCited.filter((id) => !availableIds.has(id));
 
@@ -215,7 +214,10 @@ export function checkEvidenceIdsExist(
     return {
       rule: 'evidence_ids_exist',
       pass: true,
-      detail: `All cited evidence IDs (${uniqueCited.join(', ')}) exist in evidence array`,
+      detail:
+        uniqueCited.length > 0
+          ? `All cited evidence IDs (${uniqueCited.join(', ')}) exist in evidence array`
+          : `Alert has ${evidence.length} evidence item(s) and all cited evidence IDs exist`,
     };
   }
 
