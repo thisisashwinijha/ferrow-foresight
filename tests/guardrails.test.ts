@@ -241,6 +241,17 @@ describe('Guardrail System: Rule 7 - Criticality A with P1 Urgency Routed to Pla
     expect(res.pass).toBe(false);
     expect(res.requiresPlantHead).toBe(true);
     expect(res.failBehavior).toBe('route_plant_head');
+    expect(res.detail).toBe('Requires Plant Head approval (pending)');
+  });
+
+  it('shows Requires Plant Head approval (pending) until approved', () => {
+    const pendingRes = checkCriticalityARouting('A', 'P1', 'Plant Head', false);
+    expect(pendingRes.pass).toBe(false);
+    expect(pendingRes.detail).toBe('Requires Plant Head approval (pending)');
+
+    const approvedRes = checkCriticalityARouting('A', 'P1', 'Plant Head', true);
+    expect(approvedRes.pass).toBe(true);
+    expect(approvedRes.detail).toContain('approved by authorized Plant Head');
   });
 
   it('passes when user role is Plant Head', () => {

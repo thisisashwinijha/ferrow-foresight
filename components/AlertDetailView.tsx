@@ -143,6 +143,13 @@ export function AlertDetailView({
     );
   }, [alert, selectedFailureModeOverride, selectedTechOverride, machine.criticality, technicians, certifications, liveSpares, role]);
 
+  // Non-criticality technical guardrail checks
+  const technicalGuardrailsPass = useMemo(() => {
+    return guardrailOutcome.checks
+      .filter((c) => c.rule !== 'criticality_a_p1')
+      .every((c) => c.pass);
+  }, [guardrailOutcome.checks]);
+
   // Check role authorization for Criticality A + P1 and workflow stage
   const isP1CritA = machine.criticality === 'A' && alert.urgency === 'P1';
   const isSentToPlantHead =
@@ -294,8 +301,13 @@ export function AlertDetailView({
       showToast('P1 alerts on Criticality A assets require Plant Head approval.', 'warning');
       return;
     }
-    if (!guardrailOutcome.pass) {
-      const failedDetails = guardrailOutcome.checks
+    const checksToVerify = isP1CritA
+      ? guardrailOutcome.checks.filter((c) => c.rule !== 'criticality_a_p1')
+      : guardrailOutcome.checks;
+    const passes = checksToVerify.every((c) => c.pass);
+
+    if (!passes) {
+      const failedDetails = checksToVerify
         .filter((c) => !c.pass)
         .map((c) => c.detail)
         .join('; ');
@@ -562,7 +574,7 @@ export function AlertDetailView({
         </div>
 
         {/* Guardrail failure explanation banner */}
-        {!guardrailOutcome.pass && alert.status !== 'approved' && alert.status !== 'resolved' && (
+        {!technicalGuardrailsPass && alert.status !== 'approved' && alert.status !== 'resolved' && (
           <div className="p-4 rounded-btn bg-warning/10 border border-warning/30 text-xs space-y-2">
             <div className="flex items-center gap-2 text-warning font-semibold">
               <AlertTriangle className="w-4 h-4 shrink-0" />
@@ -573,7 +585,7 @@ export function AlertDetailView({
             </p>
             <ul className="list-disc pl-5 space-y-1 text-ink-muted">
               {guardrailOutcome.checks
-                .filter((c) => !c.pass)
+                .filter((c) => !c.pass && c.rule !== 'criticality_a_p1')
                 .map((c) => (
                   <li key={c.rule}>
                     <strong className="text-ink capitalize">{c.rule.replace(/_/g, ' ')}:</strong> {c.detail}
@@ -903,9 +915,9 @@ export function AlertDetailView({
                     <div className="space-y-2">
                       <button
                         onClick={handleSendToPlantHead}
-                        disabled={isSendingToPlantHead || !isPlanner || !guardrailOutcome.pass}
+                        disabled={isSendingToPlantHead || !isPlanner || !technicalGuardrailsPass}
                         className={`w-full py-2.5 rounded-btn text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
-                          !isPlanner || !guardrailOutcome.pass
+                          !isPlanner || !technicalGuardrailsPass
                             ? 'bg-surface-2 text-ink-muted cursor-not-allowed opacity-60'
                             : 'bg-ink text-canvas hover:opacity-90 shadow-xs'
                         }`}
@@ -914,7 +926,7 @@ export function AlertDetailView({
                         <span>{isSendingToPlantHead ? 'Sending to Plant Head...' : 'Send to Plant Head'}</span>
                       </button>
 
-                      {(!isPlanner || !guardrailOutcome.pass) && (
+                      {(!isPlanner || !technicalGuardrailsPass) && (
                         <p className="text-[11px] text-warning font-medium leading-relaxed">
                           {!isPlanner
                             ? 'Only Maintenance Planner can forward Criticality A alerts to Plant Head.'
@@ -927,9 +939,9 @@ export function AlertDetailView({
                     <div className="space-y-2">
                       <button
                         onClick={handleApprove}
-                        disabled={isApproving || !isPlantHead || !guardrailOutcome.pass}
+                        disabled={isApproving || !isPlantHead || !technicalGuardrailsPass}
                         className={`w-full py-2.5 rounded-btn text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
-                          !isPlantHead || !guardrailOutcome.pass
+                          !isPlantHead || !technicalGuardrailsPass
                             ? 'bg-surface-2 text-ink-muted cursor-not-allowed opacity-60'
                             : 'bg-ink text-canvas hover:opacity-90 shadow-xs'
                         }`}
@@ -938,7 +950,7 @@ export function AlertDetailView({
                         <span>{isApproving ? 'Approving...' : 'Approve Work Order'}</span>
                       </button>
 
-                      {(!isPlantHead || !guardrailOutcome.pass) && (
+                      {(!isPlantHead || !technicalGuardrailsPass) && (
                         <p className="text-[11px] text-danger font-medium leading-relaxed">
                           {!isPlantHead
                             ? 'Only Plant Head has authority to approve P1 alerts on Criticality A assets.'
