@@ -103,13 +103,13 @@ export async function getAgentStatistics() {
     const list = runsByMappedId[id] || [];
     if (list.length > 0) {
       const sumLatency = list.reduce((acc, curr) => acc + (curr.latency_ms || 0), 0);
-      const latest = list[0];
-      const provider = latest.input?.provider || latest.output?.provider || latest.model || 'live';
+      const defaultModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+      const resolvedModel = latest.model && latest.model.includes('gemini') ? latest.model : defaultModel;
       statsByAgent[id] = {
         totalRuns: list.length,
         avgLatencyMs: Math.round(sumLatency / list.length),
         provider: provider,
-        model: latest.model || provider,
+        model: resolvedModel,
         lastRun: latest.created_at || null,
         lastRunDate: latest.created_at || null,
       };

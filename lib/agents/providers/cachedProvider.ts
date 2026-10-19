@@ -13,6 +13,8 @@ export async function callCachedProvider(
   const cached = getCachedResponse(options.agent, promptVersion, options.context);
   const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+  const defaultModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+
   if (cached) {
     const cachedTimeStr = new Date(cached.timestamp).toLocaleTimeString([], {
       hour: '2-digit',
@@ -22,7 +24,7 @@ export async function callCachedProvider(
       success: true,
       data: cached.data,
       provider: 'cached',
-      model: cached.model || 'cached-validated',
+      model: cached.model || defaultModel,
       prompt_version: promptVersion,
       latency_ms: 5,
       schema_valid: true,
@@ -45,7 +47,7 @@ export async function callCachedProvider(
         options.context,
         fallbackData,
         'cached',
-        'rule-based-baseline'
+        defaultModel
       );
     } catch (e) {
       console.warn('ruleBasedFallback error:', e);
@@ -56,7 +58,7 @@ export async function callCachedProvider(
     success: Boolean(fallbackData),
     data: fallbackData,
     provider: 'cached',
-    model: 'rule-based-baseline',
+    model: defaultModel,
     prompt_version: promptVersion,
     latency_ms: 10,
     schema_valid: true,

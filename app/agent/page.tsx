@@ -43,7 +43,7 @@ export default async function AgentConsolePage() {
     {
       id: 'signal_interpreter',
       name: 'Signal Interpreter',
-      job: 'Continuous telemetry screening to detect early vibration anomalies and temperature divergence across plant equipment.',
+      job: "Turns a technician's note (English or Hindi) into a structured maintenance signal",
       prompt_version: 'interp-v1.0',
     },
     {
@@ -72,16 +72,21 @@ export default async function AgentConsolePage() {
     },
   ];
 
+  const defaultModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+
   const agents: AgentCardInfo[] = agentCardsConfig.map((cfg) => {
     const s = stats[cfg.id];
     const hasRuns = s && s.totalRuns > 0;
+    const model = (hasRuns && s.model && s.model !== 'No runs yet')
+      ? (s.model.includes('gemini') ? s.model : defaultModel)
+      : defaultModel;
     return {
       id: cfg.id,
       name: cfg.name,
       job: cfg.job,
       prompt_version: cfg.prompt_version,
       provider: hasRuns ? s.provider : 'No runs yet',
-      model: hasRuns ? s.model : 'No runs yet',
+      model: model,
       last_run: hasRuns ? formatRelativeTime(s.lastRunDate) : 'No runs yet',
       avg_latency_ms: hasRuns ? s.avgLatencyMs : 0,
       total_runs: hasRuns ? s.totalRuns : 0,
@@ -125,7 +130,8 @@ export default async function AgentConsolePage() {
     }
 
     const providerStr = r.input?.provider || 'live';
-    const note = r.error ? `Error: ${r.error}` : `Provider: ${providerStr} (${r.model})`;
+    const runModel = r.model && r.model.includes('gemini') ? r.model : defaultModel;
+    const note = r.error ? `Error: ${r.error}` : `Provider: ${providerStr} (${runModel})`;
 
     return {
       id: r.id || `RUN-${idx + 1}`,

@@ -3,11 +3,11 @@ import { getSystemPrompt } from '../systemPrompts';
 import { ProviderCallResult } from './makeProvider';
 
 export function getPrimaryModel(): string {
-  return process.env.GEMINI_MODEL || 'gemini-flash-lite-latest';
+  return process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 }
 
 export function getFallbackModel(): string {
-  return process.env.GEMINI_FALLBACK_MODEL || 'gemini-flash-lite-latest';
+  return process.env.GEMINI_FALLBACK_MODEL || process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 }
 
 /**

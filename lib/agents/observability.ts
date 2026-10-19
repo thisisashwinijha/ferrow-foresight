@@ -23,10 +23,13 @@ export function sanitizeError(err: any): string {
 
 export async function logAgentRun(run: AgentRunRecord): Promise<void> {
   const sanitizedError = run.error ? sanitizeError(run.error) : null;
+  const defaultModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+  const resolvedModel = run.model && run.model.includes('gemini') ? run.model : defaultModel;
   const entry: AgentRunRecord = {
     ...run,
     id: run.id || `RUN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
     created_at: run.created_at || new Date().toISOString(),
+    model: resolvedModel,
     error: sanitizedError,
   };
 

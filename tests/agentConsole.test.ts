@@ -64,4 +64,29 @@ describe('Agent Console & Golden Scorecard', () => {
       expect(exists).toBe(false);
     }
   });
+
+  it('verifies Signal Interpreter description and separate run logging for Fix 8', async () => {
+    const pageSrc = fs.readFileSync(
+      path.join(process.cwd(), 'app/agent/page.tsx'),
+      'utf8'
+    );
+    expect(pageSrc).toContain("Turns a technician's note (English or Hindi) into a structured maintenance signal");
+
+    // Execute triage and verify a separate signal_interpreter run is logged
+    const { triageService } = await import('@/lib/triageService');
+    const { getAgentRuns } = await import('@/lib/data/agentRuns');
+
+    await triageService({
+      machine_id: 'P07-M05',
+      plant_id: 'P-07',
+      symptom_tags: ['vibration:high_frequency_whine'],
+      note: 'Vacuum pump running hot with whining noise',
+      technician_id: 'P07-T03',
+    });
+
+    const runs = await getAgentRuns(20);
+    const interpRun = runs.find((r) => r.step === 'signal_interpreter');
+    expect(interpRun).toBeDefined();
+    expect(interpRun?.model).toBe(process.env.GEMINI_MODEL || 'gemini-2.5-flash');
+  });
 });

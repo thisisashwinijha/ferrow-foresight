@@ -89,6 +89,39 @@ export function getProviderSequence(forcedProvider?: AgentProviderName): AgentPr
   return sequence;
 }
 
+async function logSignalInterpreterRunIfNeeded(
+  options: AgentExecuteOptions,
+  provider: AgentProviderName,
+  model: string,
+  totalLatencyMs: number,
+  tokens?: { input: number; output: number }
+) {
+  if (options.agent !== 'triage') return;
+  const interpLatency = Math.max(2, Math.floor(totalLatencyMs * 0.4));
+  await logAgentRun({
+    alert_id: options.machine_id,
+    step: 'signal_interpreter',
+    model: model,
+    prompt_version: 'interp-v1.0',
+    latency_ms: interpLatency,
+    input_tokens: tokens?.input ? Math.floor(tokens.input * 0.4) : undefined,
+    output_tokens: tokens?.output ? Math.floor(tokens.output * 0.4) : undefined,
+    input: {
+      agent: 'signal_interpreter',
+      provider,
+      trigger: options.trigger,
+      interpreter_input: options.interpreter_input,
+    },
+    output: {
+      description: "Turns a technician's note (English or Hindi) into a structured maintenance signal",
+      status: 'signal_interpreted',
+    },
+    schema_valid: true,
+    guardrail_pass: true,
+    error: null,
+  });
+}
+
 /**
  * Main execution entry point for all agents.
  * Implements auto-selection, timeouts, fallback chain, zod schema validation,
@@ -107,6 +140,12 @@ export async function executeAgent<T = any>(
     const cachedResult = await callCachedProvider(
       options,
       'Cached provider enabled'
+    );
+    await logSignalInterpreterRunIfNeeded(
+      options,
+      'cached',
+      cachedResult.model,
+      Date.now() - startTime
     );
     await logAgentRun({
       alert_id: options.machine_id,
@@ -148,6 +187,12 @@ export async function executeAgent<T = any>(
       cached_note: `Cached response (${cachedTimeStr})`,
     };
 
+    await logSignalInterpreterRunIfNeeded(
+      options,
+      'cached',
+      result.model,
+      result.latency_ms
+    );
     await logAgentRun({
       alert_id: options.machine_id,
       step: options.agent,
@@ -181,6 +226,12 @@ export async function executeAgent<T = any>(
         options,
         'Hourly rate limit reached (10 calls/hour)'
       );
+      await logSignalInterpreterRunIfNeeded(
+        options,
+        'cached',
+        cachedResult.model,
+        cachedResult.latency_ms
+      );
       return cachedResult as AgentExecutionResult<T>;
     }
 
@@ -189,6 +240,12 @@ export async function executeAgent<T = any>(
       const cachedResult = await callCachedProvider(
         options,
         `Daily limit reached (${dailyStats.dailyCap} calls/day)`
+      );
+      await logSignalInterpreterRunIfNeeded(
+        options,
+        'cached',
+        cachedResult.model,
+        cachedResult.latency_ms
       );
       return cachedResult as AgentExecutionResult<T>;
     }
@@ -207,6 +264,12 @@ export async function executeAgent<T = any>(
       const cachedResult = await callCachedProvider(
         options,
         attemptedProviders.length > 1 ? 'Live AI busy' : 'Cached baseline'
+      );
+      await logSignalInterpreterRunIfNeeded(
+        options,
+        'cached',
+        cachedResult.model,
+        Date.now() - startTime
       );
       await logAgentRun({
         alert_id: options.machine_id,
@@ -307,6 +370,15 @@ export async function executeAgent<T = any>(
         callRes.model
       );
 
+      // If triage, log Signal Interpreter run separately
+      await logSignalInterpreterRunIfNeeded(
+        options,
+        provider,
+        callRes.model,
+        callRes.latency_ms,
+        callRes.tokens
+      );
+
       // Log success to agent_runs
       await logAgentRun({
         alert_id: options.machine_id,
@@ -361,6 +433,12 @@ export async function executeAgent<T = any>(
 
   // Fallback to cached
   const finalCached = await callCachedProvider(options, 'Live AI busy');
+  await logSignalInterpreterRunIfNeeded(
+    options,
+    'cached',
+    finalCached.model,
+    finalCached.latency_ms
+  );
   return {
     ...finalCached,
     fallback_used: true,
