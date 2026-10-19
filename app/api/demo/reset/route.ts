@@ -15,6 +15,7 @@ export async function POST() {
     const admin = getSupabaseAdminClient();
     if (admin) {
       try {
+        // Restore seed alert AL-1001 and machine P07-M03
         const seedAlert = seedData.alerts.find((a) => a.id === 'AL-1001');
         if (seedAlert) {
           await admin.from('alerts').update({
@@ -33,8 +34,32 @@ export async function POST() {
           }).eq('id', 'P07-M03');
         }
 
-        // Delete test work orders or observations created during demo
-        await admin.from('work_orders').delete().ilike('id', 'WO-%').neq('id', 'WO-4001');
+        // Delete test work orders created during demo that are not part of seed data
+        const seedWoIds = seedData.work_orders.map((w: any) => w.id);
+        const { data: existingWos } = await admin.from('work_orders').select('id');
+        if (existingWos && existingWos.length > 0) {
+          const toDelete = existingWos
+            .filter((w: any) => !seedWoIds.includes(w.id))
+            .map((w: any) => w.id);
+          if (toDelete.length > 0) {
+            await admin.from('work_orders').delete().in('id', toDelete);
+          }
+        }
+
+        // Restore all seeded work orders in Supabase (WO-2201 for AL-1004, WO-2202 for AL-1005, plus history)
+        await admin.from('work_orders').upsert(seedData.work_orders);
+
+        // Delete test observations created during demo
+        const seedObsIds = seedData.observations.map((o: any) => o.id);
+        const { data: existingObs } = await admin.from('observations').select('id');
+        if (existingObs && existingObs.length > 0) {
+          const obsToDelete = existingObs
+            .filter((o: any) => !seedObsIds.includes(o.id))
+            .map((o: any) => o.id);
+          if (obsToDelete.length > 0) {
+            await admin.from('observations').delete().in('id', obsToDelete);
+          }
+        }
       } catch (e) {
         console.warn('Could not reset Supabase state during demo reset:', e);
       }
