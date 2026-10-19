@@ -193,7 +193,7 @@ export function checkSchemaValid(data: unknown): GuardrailCheckResult {
  */
 export function checkEvidenceIdsExist(
   reasoning: string,
-  evidence: Array<{ id: string }>
+  evidence: Array<{ id: string; [key: string]: any }>
 ): GuardrailCheckResult {
   if (!evidence || evidence.length === 0) {
     return {
